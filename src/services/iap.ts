@@ -1,131 +1,94 @@
-import {
-  initConnection,
-  endConnection,
-  getProducts,
-  requestPurchase,
-  purchaseUpdatedListener,
-  purchaseErrorListener,
-  finishTransaction,
-  Product,
-  Purchase,
-} from 'react-native-iap';
+import Purchases, {
+  PurchasesOffering,
+  PurchasesPackage,
+  CustomerInfo,
+} from 'react-native-purchases';
 import {IAP_PRODUCTS} from '@/config/constants';
 
-let purchaseUpdateSubscription: any;
-let purchaseErrorSubscription: any;
-
 /**
- * In-App Purchase Service
+ * RevenueCat IAP Service for Expo
+ * Works with both iOS and Android
  */
 export const IAPService = {
   /**
-   * Initialize IAP connection
+   * Initialize RevenueCat
+   * @param apiKey - RevenueCat API key (use different keys for iOS and Android)
    */
-  async initialize(): Promise<void> {
+  async initialize(apiKey: string): Promise<void> {
     try {
-      await initConnection();
-      console.log('IAP connection initialized');
-
-      // Set up purchase listeners
-      purchaseUpdateSubscription = purchaseUpdatedListener(
-        async (purchase: Purchase) => {
-          const receipt = purchase.transactionReceipt;
-          if (receipt) {
-            try {
-              // Acknowledge the purchase
-              await finishTransaction({purchase});
-              console.log('Purchase acknowledged:', purchase.productId);
-
-              // Handle the purchase (unlock content, etc.)
-              this.handlePurchaseSuccess(purchase);
-            } catch (error) {
-              console.error('Error finishing transaction:', error);
-            }
-          }
-        },
-      );
-
-      purchaseErrorSubscription = purchaseErrorListener((error: any) => {
-        console.error('Purchase error:', error);
-        this.handlePurchaseError(error);
-      });
+      await Purchases.configure({apiKey});
+      Purchases.setDebugLogsEnabled(__DEV__);
+      console.log('RevenueCat initialized');
     } catch (error) {
-      console.error('Error initializing IAP:', error);
+      console.error('Error initializing RevenueCat:', error);
       throw error;
     }
   },
 
   /**
-   * Clean up IAP connection
+   * Get available offerings
    */
-  async cleanup(): Promise<void> {
+  async getOfferings(): Promise<PurchasesOffering | null> {
     try {
-      if (purchaseUpdateSubscription) {
-        purchaseUpdateSubscription.remove();
-      }
-      if (purchaseErrorSubscription) {
-        purchaseErrorSubscription.remove();
-      }
-      await endConnection();
-      console.log('IAP connection closed');
+      const offerings = await Purchases.getOfferings();
+      return offerings.current;
     } catch (error) {
-      console.error('Error cleaning up IAP:', error);
+      console.error('Error getting offerings:', error);
+      return null;
     }
   },
 
   /**
-   * Get available products
+   * Purchase a package
    */
-  async getAvailableProducts(): Promise<Product[]> {
+  async purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo> {
     try {
-      const productIds = Object.values(IAP_PRODUCTS);
-      const products = await getProducts({skus: productIds});
-      return products;
-    } catch (error) {
-      console.error('Error getting products:', error);
-      return [];
-    }
-  },
+      const {customerInfo} = await Purchases.purchasePackage(pkg);
 
-  /**
-   * Purchase a product
-   */
-  async purchaseProduct(productId: string): Promise<void> {
-    try {
-      await requestPurchase({sku: productId});
+      if (this.onPurchaseSuccess) {
+        this.onPurchaseSuccess(customerInfo);
+      }
+
+      return customerInfo;
     } catch (error) {
-      console.error('Error purchasing product:', error);
+      console.error('Error purchasing package:', error);
+
+      if (this.onPurchaseError) {
+        this.onPurchaseError(error);
+      }
+
       throw error;
     }
   },
 
   /**
-   * Handle successful purchase
+   * Restore purchases
    */
-  handlePurchaseSuccess(purchase: Purchase): void {
-    // This would be handled by the app's state management
-    console.log('Purchase successful:', purchase.productId);
-
-    // You can emit an event here or call a callback
-    if (this.onPurchaseSuccess) {
-      this.onPurchaseSuccess(purchase.productId);
+  async restorePurchases(): Promise<CustomerInfo> {
+    try {
+      const customerInfo = await Purchases.restorePurchases();
+      return customerInfo;
+    } catch (error) {
+      console.error('Error restoring purchases:', error);
+      throw error;
     }
   },
 
   /**
-   * Handle purchase error
+   * Get customer info
    */
-  handlePurchaseError(error: any): void {
-    // This would be handled by the app's error handling
-    console.error('Purchase failed:', error);
-
-    if (this.onPurchaseError) {
-      this.onPurchaseError(error);
+  async getCustomerInfo(): Promise<CustomerInfo> {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      return customerInfo;
+    } catch (error) {
+      console.error('Error getting customer info:', error);
+      throw error;
     }
   },
 
   // Callbacks (set by the app)
-  onPurchaseSuccess: null as ((productId: string) => void) | null,
+  onPurchaseSuccess: null as ((customerInfo: CustomerInfo) => void) | null,
   onPurchaseError: null as ((error: any) => void) | null,
 };
 
@@ -134,9 +97,9 @@ export const IAPService = {
  */
 export function isLevelPackPurchased(
   packId: string,
-  purchasedProducts: string[],
+  customerInfo: CustomerInfo,
 ): boolean {
-  return purchasedProducts.includes(packId);
+  return customerInfo.entitlements.active[packId] !== undefined;
 }
 
 /**

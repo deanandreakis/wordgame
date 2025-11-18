@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from 'expo-linear-gradient';
 import {GAME_CONFIG, IAP_PRODUCTS} from '@/config/constants';
 import {generateLevel} from '@/utils/gameLogic';
 import {Level} from '@/types/game';
