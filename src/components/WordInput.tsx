@@ -1,6 +1,6 @@
 import React, {useEffect, useRef} from 'react';
 import {View, Text, StyleSheet, Animated, TouchableOpacity} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from 'expo-linear-gradient';
 import {GAME_CONFIG} from '@/config/constants';
 import {Letter} from '@/types/game';
 

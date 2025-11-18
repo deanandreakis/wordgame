@@ -3,11 +3,13 @@
 <div align="center">
 
 ![LetterLoom](https://img.shields.io/badge/LetterLoom-v1.0.0-purple?style=for-the-badge)
+![Expo](https://img.shields.io/badge/Expo-50.0.0-000020?style=for-the-badge&logo=expo)
 ![React Native](https://img.shields.io/badge/React_Native-0.73.2-61DAFB?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-3178C6?style=for-the-badge&logo=typescript)
 ![Firebase](https://img.shields.io/badge/Firebase-Latest-FFCA28?style=for-the-badge&logo=firebase)
+![EAS](https://img.shields.io/badge/EAS_Build-Enabled-4630EB?style=for-the-badge)
 
-**An addictive word puzzle game for iOS where you weave letters together to create words!**
+**An addictive word puzzle game built with Expo! Develop on Linux, build for iOS & Android!**
 
 </div>
 
@@ -43,11 +45,14 @@
 - **Profile Stats** - Track total score, words found, and highest level
 
 ### 🏗️ Technical Features
+- **Expo/EAS** - Build iOS apps from Linux!
 - **Firebase Backend** - Cloud Firestore for data persistence
+- **RevenueCat** - Professional IAP management
 - **Anonymous Authentication** - Seamless user experience
 - **Offline Support** - Local storage with AsyncStorage
 - **Comprehensive Tests** - 70%+ code coverage
 - **TypeScript** - Fully typed for reliability
+- **No Native Dependencies** - Pure JavaScript/TypeScript
 
 ---
 
@@ -77,17 +82,17 @@
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Linux/Mac/Windows)
 
 ### Prerequisites
 
 - **Node.js** >= 18
-- **Yarn** or **npm**
-- **Xcode** 13+ (for iOS development)
-- **CocoaPods** (for iOS dependencies)
+- **npm** or **yarn**
+- **Expo account** (free at https://expo.dev/)
 - **Firebase Project** (for backend services)
+- **RevenueCat account** (for IAP)
 
-### Installation
+### Quick Start
 
 1. **Clone the repository**
 ```bash
@@ -98,44 +103,49 @@ cd letterloom
 2. **Install dependencies**
 ```bash
 npm install
-# or
-yarn install
 ```
 
-3. **Install iOS dependencies**
-```bash
-cd ios
-pod install
-cd ..
-```
+3. **Configure Firebase** (see `EAS_SETUP.md` for details)
+   - Create Firebase project
+   - Update `src/services/firebase.ts` with your config
 
-4. **Firebase Setup**
-   - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-   - Enable Firebase Authentication (Anonymous)
-   - Enable Cloud Firestore
-   - Download `GoogleService-Info.plist` and place in `ios/LetterLoom/`
-   - Download `google-services.json` and place in `android/app/`
+4. **Configure RevenueCat** (see `EAS_SETUP.md` for details)
+   - Create RevenueCat account
+   - Get API keys
+   - Update `src/App.tsx`
 
-5. **Configure In-App Purchases**
-   - Set up App Store Connect
-   - Create IAP products matching the IDs in `src/config/constants.ts`
-   - Configure Xcode signing & capabilities
-
-### Running the App
-
-**iOS**
-```bash
-npm run ios
-# or
-yarn ios
-```
-
-**Start Metro Bundler**
+5. **Start Development Server**
 ```bash
 npm start
-# or
-yarn start
 ```
+
+6. **Test on Device**
+   - Install Expo Go on your phone
+   - Scan QR code from terminal
+   - App loads instantly!
+
+### Building for Production
+
+**See `EAS_SETUP.md` for complete build instructions**
+
+```bash
+# Install EAS CLI
+npm install -g eas-cli
+
+# Login
+eas login
+
+# Build for iOS
+eas build --platform ios --profile production
+
+# Build for Android
+eas build --platform android --profile production
+
+# Build both
+eas build --platform all --profile production
+```
+
+**No Xcode or Mac required! Build iOS & Android apps from Linux using EAS Build!**
 
 ---
 
@@ -203,10 +213,17 @@ letterloom/
 │   ├── config/            # Configuration
 │   │   └── constants.ts   # Game constants
 │   └── App.tsx            # Root component
-├── ios/                   # iOS native code
-├── android/              # Android native code
+├── assets/               # App assets (icons, splash screens)
+│   ├── icon.png         # App icon (1024x1024)
+│   ├── splash.png       # Splash screen (1284x2778)
+│   ├── adaptive-icon.png # Android adaptive icon
+│   └── *.svg            # SVG source files
 ├── __tests__/           # Test files
-└── package.json         # Dependencies
+├── app.json            # Expo configuration
+├── eas.json            # EAS Build configuration
+├── babel.config.js     # Babel configuration
+├── tsconfig.json       # TypeScript configuration
+└── package.json        # Dependencies
 ```
 
 ---
@@ -304,19 +321,21 @@ npm run test:coverage
 
 ## 🛠️ Technologies Used
 
+- **Expo** 50.0.0 - Managed React Native framework
+- **EAS Build** - Cloud-based iOS/Android builds from Linux
 - **React Native** 0.73.2 - Cross-platform mobile framework
 - **TypeScript** 5.3.3 - Type-safe JavaScript
-- **Firebase**
+- **Firebase (Web SDK)** 10.7.1
   - Authentication - Anonymous sign-in
   - Cloud Firestore - Real-time database
-  - Analytics - User behavior tracking
-- **React Native IAP** - In-app purchase handling
-- **React Native Reanimated** - Smooth animations
-- **React Native Linear Gradient** - Beautiful gradients
-- **React Native Haptic Feedback** - Tactile responses
-- **React Native Vector Icons** - Icon library
+  - No native dependencies required!
+- **RevenueCat** 7.0.0 - Professional IAP management
+- **Expo Linear Gradient** - Beautiful gradients
+- **Expo Haptics** - Tactile feedback
+- **Expo Secure Store** - Encrypted local storage
+- **React Native Reanimated** 3.6.0 - Smooth animations
 - **AsyncStorage** - Local data persistence
-- **Jest** - Testing framework
+- **Jest** + **jest-expo** - Testing framework
 - **React Native Testing Library** - Component testing
 
 ---
@@ -358,9 +377,9 @@ Track these KPIs for success:
   - Endless mode
 
 - [ ] **Technical**
-  - Android version
   - Tablet optimization
   - Cloud save sync
+  - Offline mode improvements
 
 ---
 

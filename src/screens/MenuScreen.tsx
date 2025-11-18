@@ -7,7 +7,7 @@ import {
   SafeAreaView,
   Animated,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from 'expo-linear-gradient';
 import {GAME_CONFIG} from '@/config/constants';
 import {getUserProfile} from '@/utils/storage';
 import {UserProfile} from '@/types/game';

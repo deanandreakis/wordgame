@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1284" height="2778" viewBox="0 0 1284 2778" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="splashGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0F0F1E;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1A1A2E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F0F1E;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667EEA;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764BA2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="tileGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6C5CE7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A29BFE;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1284" height="2778" fill="url(#splashGradient)"/>
+
+  <!-- Center logo area -->
+  <g transform="translate(642, 1389)">
+    <!-- Logo background circle -->
+    <circle cx="0" cy="-100" r="280" fill="url(#logoGradient)" opacity="0.2"/>
+
+    <!-- Letter tiles forming game logo -->
+    <!-- L -->
+    <rect x="-360" y="-250" width="100" height="100" fill="url(#tileGradient)" rx="15"/>
+    <text x="-310" y="-185" font-family="Arial, sans-serif" font-size="65" font-weight="bold" fill="#FFFFFF" text-anchor="middle">L</text>
+
+    <!-- E -->
+    <rect x="-240" y="-250" width="100" height="100" fill="url(#tileGradient)" rx="15"/>
+    <text x="-190" y="-185" font-family="Arial, sans-serif" font-size="65" font-weight="bold" fill="#FFFFFF" text-anchor="middle">E</text>
+
+    <!-- T -->
+    <rect x="-120" y="-250" width="100" height="100" fill="url(#tileGradient)" rx="15"/>
+    <text x="-70" y="-185" font-family="Arial, sans-serif" font-size="65" font-weight="bold" fill="#FFFFFF" text-anchor="middle">T</text>
+
+    <!-- T -->
+    <rect x="0" y="-250" width="100" height="100" fill="url(#tileGradient)" rx="15"/>
+    <text x="50" y="-185" font-family="Arial, sans-serif" font-size="65" font-weight="bold" fill="#FFFFFF" text-anchor="middle">T</text>
+
+    <!-- E -->
+    <rect x="120" y="-250" width="100" height="100" fill="url(#tileGradient)" rx="15"/>
+    <text x="170" y="-185" font-family="Arial, sans-serif" font-size="65" font-weight="bold" fill="#FFFFFF" text-anchor="middle">E</text>
+
+    <!-- R -->
+    <rect x="240" y="-250" width="100" height="100" fill="url(#tileGradient)" rx="15"/>
+    <text x="290" y="-185" font-family="Arial, sans-serif" font-size="65" font-weight="bold" fill="#FFFFFF" text-anchor="middle">R</text>
+
+    <!-- Title -->
+    <text x="0" y="-50" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="#FFFFFF" text-anchor="middle">LetterLoom</text>
+
+    <!-- Subtitle -->
+    <text x="0" y="10" font-family="Arial, sans-serif" font-size="32" fill="#A29BFE" text-anchor="middle">Weave Words, Score Big!</text>
+
+    <!-- Decorative elements -->
+    <circle cx="-420" cy="-300" r="12" fill="#FD79A8" opacity="0.6"/>
+    <circle cx="420" cy="-300" r="15" fill="#FDCB6E" opacity="0.6"/>
+    <circle cx="-380" cy="100" r="10" fill="#00B894" opacity="0.6"/>
+    <circle cx="380" cy="100" r="13" fill="#FD79A8" opacity="0.6"/>
+
+    <!-- Pulsing dots animation hint -->
+    <circle cx="-50" cy="150" r="8" fill="#6C5CE7" opacity="0.8"/>
+    <circle cx="0" cy="150" r="8" fill="#6C5CE7" opacity="0.6"/>
+    <circle cx="50" cy="150" r="8" fill="#6C5CE7" opacity="0.4"/>
+  </g>
+
+  <!-- Footer text -->
+  <text x="642" y="2650" font-family="Arial, sans-serif" font-size="28" fill="#B2BFCC" text-anchor="middle" opacity="0.6">Loading your word adventure...</text>
+</svg>

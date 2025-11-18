@@ -8,8 +8,8 @@ import {
   Text,
   ScrollView,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import LinearGradient from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import {GameBoard} from '@/components/GameBoard';
 import {WordInput} from '@/components/WordInput';
 import {ScoreDisplay} from '@/components/ScoreDisplay';
@@ -113,7 +113,7 @@ export const GameScreen: React.FC<Props> = ({
             {...letter, isSelected: true},
           ])
         ) {
-          ReactNativeHapticFeedback.trigger('notificationError');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           return prev;
         }
 
@@ -156,14 +156,14 @@ export const GameScreen: React.FC<Props> = ({
       );
 
       if (alreadyFound) {
-        ReactNativeHapticFeedback.trigger('notificationWarning');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         Alert.alert('Already Found', 'You already found this word!');
         handleClearSelection();
         return;
       }
 
       // Success!
-      ReactNativeHapticFeedback.trigger('notificationSuccess');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // Add particles
       const centerX = 200;
@@ -198,7 +198,7 @@ export const GameScreen: React.FC<Props> = ({
       setIsValidWord(undefined);
     } else {
       // Invalid word
-      ReactNativeHapticFeedback.trigger('notificationError');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setIsValidWord(false);
 
       setTimeout(() => {
@@ -236,7 +236,7 @@ export const GameScreen: React.FC<Props> = ({
 
   const handleLevelComplete = () => {
     const stars = calculateStars(gameState.score, level.targetScore);
-    ReactNativeHapticFeedback.trigger('notificationSuccess');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     setTimeout(() => {
       Alert.alert(

@@ -6,10 +6,10 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import LinearGradient from 'expo-linear-gradient';
 import {GAME_CONFIG, ANIMATIONS} from '@/config/constants';
 import {Letter} from '@/types/game';
-import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import * as Haptics from 'expo-haptics';
 
 interface Props {
   letter: Letter;
@@ -62,7 +62,7 @@ export const LetterTile: React.FC<Props> = ({letter, onPress, disabled}) => {
 
   const handlePress = () => {
     if (!disabled) {
-      ReactNativeHapticFeedback.trigger('impactLight');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       // Quick bounce animation
       Animated.sequence([
