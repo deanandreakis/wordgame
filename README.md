@@ -9,7 +9,7 @@
 ![Firebase](https://img.shields.io/badge/Firebase-Latest-FFCA28?style=for-the-badge&logo=firebase)
 ![EAS](https://img.shields.io/badge/EAS_Build-Enabled-4630EB?style=for-the-badge)
 
-**An addictive word puzzle game built with Expo! Develop on Linux, build for iOS!**
+**An addictive word puzzle game built with Expo! Develop on Linux, build for iOS & Android!**
 
 </div>
 
@@ -135,7 +135,7 @@ npm install -g eas-cli
 # Login
 eas login
 
-# Build for iOS (runs on EAS servers, works from Linux!)
+# Build for iOS
 eas build --platform ios --profile production
 
 # Build for Android
@@ -145,7 +145,7 @@ eas build --platform android --profile production
 eas build --platform all --profile production
 ```
 
-**No Xcode or Mac required! Build iOS apps from Linux using EAS Build!**
+**No Xcode or Mac required! Build iOS & Android apps from Linux using EAS Build!**
 
 ---
 
@@ -213,10 +213,17 @@ letterloom/
 │   ├── config/            # Configuration
 │   │   └── constants.ts   # Game constants
 │   └── App.tsx            # Root component
-├── ios/                   # iOS native code
-├── android/              # Android native code
+├── assets/               # App assets (icons, splash screens)
+│   ├── icon.png         # App icon (1024x1024)
+│   ├── splash.png       # Splash screen (1284x2778)
+│   ├── adaptive-icon.png # Android adaptive icon
+│   └── *.svg            # SVG source files
 ├── __tests__/           # Test files
-└── package.json         # Dependencies
+├── app.json            # Expo configuration
+├── eas.json            # EAS Build configuration
+├── babel.config.js     # Babel configuration
+├── tsconfig.json       # TypeScript configuration
+└── package.json        # Dependencies
 ```
 
 ---
@@ -370,9 +377,9 @@ Track these KPIs for success:
   - Endless mode
 
 - [ ] **Technical**
-  - Android version
   - Tablet optimization
   - Cloud save sync
+  - Offline mode improvements
 
 ---
 
