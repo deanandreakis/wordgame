@@ -12,6 +12,59 @@ This guide walks you through setting up and building **LetterLoom** using EAS (E
 - **Apple Developer account** ($99/year for iOS builds)
 - **Google Play Developer account** ($25 one-time for Android)
 
+---
+
+## 🔒 Security: Secrets Management
+
+**LetterLoom uses industry-standard secrets management to protect your API keys.**
+
+### Why This Matters
+
+❌ **NEVER** commit secrets to GitHub:
+- API keys in public repos can be scraped by bots in minutes
+- Compromised Firebase keys = unauthorized database access
+- Leaked RevenueCat keys = fraudulent purchases
+
+✅ **LetterLoom's Solution:**
+- **Local development:** `.env` file (gitignored)
+- **EAS builds:** EAS Secrets (cloud-encrypted)
+- **Runtime:** Secrets passed via `expo-constants` (not in code)
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Development Flow                       │
+├─────────────────────────────────────────────────────────┤
+│                                                           │
+│  .env file (local)              EAS Secrets (cloud)      │
+│       ↓                                ↓                 │
+│  app.config.js (reads process.env)                       │
+│       ↓                                                  │
+│  expo-constants (runtime access)                         │
+│       ↓                                                  │
+│  firebase.ts & iap.ts (consume secrets)                  │
+│                                                           │
+│  ✅ Secrets NEVER in code                                │
+│  ✅ Secrets NEVER in GitHub                              │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Quick Start
+
+1. **Copy example file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Add your secrets to `.env`** (see steps 3.4 and 4.4)
+
+3. **Never commit `.env`** (already in `.gitignore`)
+
+4. **For production builds:** Use `eas secret:create` (see steps below)
+
+---
+
 ## 🎯 Step 1: Install EAS CLI
 
 ```bash
@@ -47,20 +100,52 @@ Enter your Expo credentials when prompted.
 3. Click "Web" icon to add a web app
 4. Copy the Firebase configuration object
 
-### 3.4 Update Firebase Config
+### 3.4 Configure Firebase Secrets (SECURE METHOD)
 
-Edit `src/services/firebase.ts` and replace the config:
+**IMPORTANT:** Never commit API keys to GitHub! LetterLoom uses secure environment variables for all secrets.
 
-```typescript
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-};
+#### Option A: Local Development (.env file)
+
+1. **Copy the example file:**
+```bash
+cp .env.example .env
 ```
+
+2. **Edit `.env` and add your Firebase config:**
+```bash
+FIREBASE_API_KEY=AIzaSyC_your_actual_api_key_here
+FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=123456789012
+FIREBASE_APP_ID=1:123456789012:web:abc123def456
+```
+
+3. **The `.env` file is already in `.gitignore` and will NEVER be committed to GitHub** ✅
+
+#### Option B: EAS Build (Cloud Secrets)
+
+For production builds on EAS, store secrets in EAS Secret Manager:
+
+```bash
+# Set Firebase secrets
+eas secret:create --scope project --name FIREBASE_API_KEY --value "AIzaSyC_your_actual_api_key"
+eas secret:create --scope project --name FIREBASE_AUTH_DOMAIN --value "your-project.firebaseapp.com"
+eas secret:create --scope project --name FIREBASE_PROJECT_ID --value "your-project-id"
+eas secret:create --scope project --name FIREBASE_STORAGE_BUCKET --value "your-project.appspot.com"
+eas secret:create --scope project --name FIREBASE_MESSAGING_SENDER_ID --value "123456789012"
+eas secret:create --scope project --name FIREBASE_APP_ID --value "1:123456789012:web:abc123"
+
+# Set Expo config
+eas secret:create --scope project --name EXPO_OWNER --value "your-expo-username"
+eas secret:create --scope project --name EXPO_PROJECT_ID --value "your-project-id"
+```
+
+**How it works:**
+- Local: `app.config.js` reads from `.env` via `dotenv`
+- EAS Build: `app.config.js` reads from `process.env` (EAS secrets)
+- Runtime: `firebase.ts` reads from `expo-constants` (passed via `app.config.js`)
+- **Your secrets NEVER appear in code or GitHub** 🔒
 
 ## 💰 Step 4: Configure RevenueCat (IAP)
 
@@ -101,20 +186,33 @@ In RevenueCat, create entitlements and products:
 - `com.letterloom.coins.large` - $7.99
 - `com.letterloom.premium.unlock` - $9.99
 
-### 4.4 Update App Code
+### 4.4 Configure RevenueCat Secrets (SECURE METHOD)
 
-Edit `src/App.tsx` to add your RevenueCat API key:
+**IMPORTANT:** Never commit RevenueCat API keys to GitHub!
 
-```typescript
-// iOS
-const REVENUECAT_API_KEY_IOS = 'your_ios_api_key_here';
-// Android
-const REVENUECAT_API_KEY_ANDROID = 'your_android_api_key_here';
+#### Option A: Local Development (.env file)
 
-// In initializeApp():
-const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
-await IAPService.initialize(apiKey);
+Add your RevenueCat API keys to the `.env` file you created in step 3.4:
+
+```bash
+# Add these lines to your .env file
+REVENUECAT_IOS_API_KEY=appl_your_ios_api_key_here
+REVENUECAT_ANDROID_API_KEY=goog_your_android_api_key_here
 ```
+
+#### Option B: EAS Build (Cloud Secrets)
+
+For production builds, add RevenueCat secrets to EAS:
+
+```bash
+eas secret:create --scope project --name REVENUECAT_IOS_API_KEY --value "appl_your_ios_key"
+eas secret:create --scope project --name REVENUECAT_ANDROID_API_KEY --value "goog_your_android_key"
+```
+
+**No code changes needed!** The app automatically:
+- Detects the platform (iOS or Android)
+- Loads the correct API key from environment variables
+- Initializes RevenueCat securely
 
 ## 🏗️ Step 5: Initialize EAS Project
 
@@ -127,35 +225,43 @@ This will:
 - Generate a project ID
 - Update `app.json` with the project ID
 
-## 📝 Step 6: Update app.json
+## 📝 Step 6: Verify Configuration
 
-Update `app.json` with your information:
+LetterLoom uses `app.config.js` (not `app.json`) to dynamically load secrets from environment variables.
 
-```json
-{
-  "expo": {
-    "owner": "your-expo-username",
-    "extra": {
-      "eas": {
-        "projectId": "your-project-id-from-eas-init"
-      }
-    }
-  }
-}
+**Verify your setup:**
+
+1. **Check that `.env` file exists** with all required secrets:
+```bash
+cat .env  # Should show all FIREBASE_*, REVENUECAT_*, and EXPO_* variables
 ```
+
+2. **Test the configuration:**
+```bash
+npm start  # Should start without errors about missing config
+```
+
+If you see errors about missing Firebase or RevenueCat config, double-check your `.env` file against `.env.example`.
+
+**For EAS builds:** Make sure you've set all secrets using `eas secret:create` as shown in steps 3.4 and 4.4.
 
 ## 🍎 Step 7: iOS Build Setup
 
 ### 7.1 Configure Bundle Identifier
 
-The bundle ID is already set in `app.json` as `com.letterloom.app`.
+The bundle ID is already set in `app.config.js` as `com.letterloom.app`.
 
-**Change it** to your own:
-```json
-{
-  "ios": {
-    "bundleIdentifier": "com.yourcompany.letterloom"
-  }
+**Change it** to your own by editing `app.config.js`:
+```javascript
+ios: {
+  bundleIdentifier: 'com.yourcompany.letterloom'
+}
+```
+
+Do the same for Android in `app.config.js`:
+```javascript
+android: {
+  package: 'com.yourcompany.letterloom'
 }
 ```
 

@@ -36,6 +36,11 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
+# Environment variables (contains secrets - never commit!)
+.env
+.env.local
+.env.*.local
+
 # fastlane
 **/fastlane/report.xml
 **/fastlane/Preview.html
