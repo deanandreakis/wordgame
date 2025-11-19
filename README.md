@@ -105,21 +105,28 @@ cd letterloom
 npm install
 ```
 
-3. **Configure Firebase** (see `EAS_SETUP.md` for details)
-   - Create Firebase project
-   - Update `src/services/firebase.ts` with your config
+3. **Configure secrets** 🔒
+```bash
+# Copy the example environment file
+cp .env.example .env
 
-4. **Configure RevenueCat** (see `EAS_SETUP.md` for details)
-   - Create RevenueCat account
-   - Get API keys
-   - Update `src/App.tsx`
+# Edit .env and add your API keys:
+# - Firebase config (from Firebase Console)
+# - RevenueCat API keys (from RevenueCat Dashboard)
+# - Expo owner/project ID
+nano .env  # or use your preferred editor
+```
 
-5. **Start Development Server**
+**IMPORTANT:** Never commit `.env` to GitHub! It's already in `.gitignore`.
+
+See `EAS_SETUP.md` for detailed instructions on getting these values.
+
+4. **Start Development Server**
 ```bash
 npm start
 ```
 
-6. **Test on Device**
+5. **Test on Device**
    - Install Expo Go on your phone
    - Scan QR code from terminal
    - App loads instantly!
@@ -337,6 +344,41 @@ npm run test:coverage
 - **AsyncStorage** - Local data persistence
 - **Jest** + **jest-expo** - Testing framework
 - **React Native Testing Library** - Component testing
+
+---
+
+## 🔒 Security & Secrets Management
+
+LetterLoom uses **industry-standard secrets management** to protect API keys and sensitive credentials:
+
+### Local Development
+- **`.env` file** for local secrets (gitignored, never committed)
+- **`app.config.js`** dynamically loads environment variables
+- **`expo-constants`** provides runtime access to configuration
+
+### Production Builds
+- **EAS Secrets** for cloud-encrypted credential storage
+- Secrets injected at build time via `eas secret:create`
+- Zero secrets in source code or version control
+
+### Architecture
+```
+.env (local) / EAS Secrets (cloud)
+         ↓
+  app.config.js (reads from process.env)
+         ↓
+  expo-constants (runtime access)
+         ↓
+  firebase.ts & iap.ts (consume secrets)
+```
+
+### Protected Credentials
+- ✅ Firebase API keys & configuration
+- ✅ RevenueCat iOS/Android API keys
+- ✅ Expo project credentials
+- ✅ All secrets excluded from GitHub via `.gitignore`
+
+**See `EAS_SETUP.md` for detailed setup instructions.**
 
 ---
 

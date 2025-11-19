@@ -21,18 +21,26 @@ import {
   serverTimestamp,
   getCountFromServer,
 } from 'firebase/firestore';
+import Constants from 'expo-constants';
 import {UserProfile, LeaderboardEntry, DailyChallenge} from '@/types/game';
 
-// Firebase configuration
-// Replace with your own Firebase config
+// Firebase configuration from secure environment variables
+// Secrets are loaded via app.config.js and accessed through expo-constants
 const firebaseConfig = {
-  apiKey: 'your-api-key',
-  authDomain: 'your-auth-domain',
-  projectId: 'your-project-id',
-  storageBucket: 'your-storage-bucket',
-  messagingSenderId: 'your-messaging-sender-id',
-  appId: 'your-app-id',
+  apiKey: Constants.expoConfig?.extra?.firebase?.apiKey,
+  authDomain: Constants.expoConfig?.extra?.firebase?.authDomain,
+  projectId: Constants.expoConfig?.extra?.firebase?.projectId,
+  storageBucket: Constants.expoConfig?.extra?.firebase?.storageBucket,
+  messagingSenderId: Constants.expoConfig?.extra?.firebase?.messagingSenderId,
+  appId: Constants.expoConfig?.extra?.firebase?.appId,
 };
+
+// Validate that Firebase config is present
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  throw new Error(
+    'Firebase configuration is missing. Please check your environment variables and app.config.js',
+  );
+}
 
 // Initialize Firebase
 let app: FirebaseApp;

@@ -1,24 +1,38 @@
+import {Platform} from 'react-native';
 import Purchases, {
   PurchasesOffering,
   PurchasesPackage,
   CustomerInfo,
 } from 'react-native-purchases';
+import Constants from 'expo-constants';
 import {IAP_PRODUCTS} from '@/config/constants';
 
 /**
  * RevenueCat IAP Service for Expo
  * Works with both iOS and Android
+ * API keys are loaded from secure environment variables via app.config.js
  */
 export const IAPService = {
   /**
-   * Initialize RevenueCat
-   * @param apiKey - RevenueCat API key (use different keys for iOS and Android)
+   * Initialize RevenueCat with platform-specific API key from environment
    */
-  async initialize(apiKey: string): Promise<void> {
+  async initialize(): Promise<void> {
     try {
+      // Get API key based on platform from expo-constants
+      const apiKey =
+        Platform.OS === 'ios'
+          ? Constants.expoConfig?.extra?.revenueCat?.iosApiKey
+          : Constants.expoConfig?.extra?.revenueCat?.androidApiKey;
+
+      if (!apiKey) {
+        throw new Error(
+          `RevenueCat API key not found for ${Platform.OS}. Please check your environment variables and app.config.js`,
+        );
+      }
+
       await Purchases.configure({apiKey});
       Purchases.setDebugLogsEnabled(__DEV__);
-      console.log('RevenueCat initialized');
+      console.log('RevenueCat initialized for', Platform.OS);
     } catch (error) {
       console.error('Error initializing RevenueCat:', error);
       throw error;
@@ -85,6 +99,15 @@ export const IAPService = {
       console.error('Error getting customer info:', error);
       throw error;
     }
+  },
+
+  /**
+   * Cleanup RevenueCat resources
+   */
+  cleanup(): void {
+    // RevenueCat doesn't require explicit cleanup, but we can reset callbacks
+    this.onPurchaseSuccess = null;
+    this.onPurchaseError = null;
   },
 
   // Callbacks (set by the app)
