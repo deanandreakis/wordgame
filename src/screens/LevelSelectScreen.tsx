@@ -11,18 +11,20 @@ import {
 import LinearGradient from 'expo-linear-gradient';
 import {GAME_CONFIG, IAP_PRODUCTS} from '@/config/constants';
 import {generateLevel} from '@/utils/gameLogic';
-import {Level} from '@/types/game';
+import {Level, UserProfile} from '@/types/game';
 import {getPurchasedLevels} from '@/utils/storage';
 import {IAPService, getLevelPackProductId} from '@/services/iap';
 
 interface Props {
   onLevelSelect: (level: Level) => void;
   onBack: () => void;
+  userProfile: UserProfile | null;
 }
 
 export const LevelSelectScreen: React.FC<Props> = ({
   onLevelSelect,
   onBack,
+  userProfile,
 }) => {
   const [purchasedLevels, setPurchasedLevels] = useState<number[]>([]);
   const [selectedPack, setSelectedPack] = useState(1);
@@ -43,9 +45,15 @@ export const LevelSelectScreen: React.FC<Props> = ({
   };
 
   const isLevelUnlocked = (levelNumber: number) => {
+    // Free levels are always unlocked
     if (levelNumber <= GAME_CONFIG.FREE_LEVELS) {
       return true;
     }
+    // Premium users get all levels unlocked
+    if (userProfile?.hasPremium) {
+      return true;
+    }
+    // Otherwise check if specific level was purchased
     return purchasedLevels.includes(levelNumber);
   };
 

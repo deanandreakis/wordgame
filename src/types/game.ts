@@ -63,6 +63,7 @@ export interface UserProfile {
   achievements: Achievement[];
   purchasedLevels: number[];
   coins: number;
+  hasPremium: boolean;
   lastPlayedDate: string;
 }
 

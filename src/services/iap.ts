@@ -6,6 +6,7 @@ import Purchases, {
 } from 'react-native-purchases';
 import Constants from 'expo-constants';
 import {IAP_PRODUCTS} from '@/config/constants';
+import type {UserProfile} from '@/types/game';
 
 /**
  * RevenueCat IAP Service for Expo
@@ -102,6 +103,34 @@ export const IAPService = {
   },
 
   /**
+   * Purchase a product by product ID
+   * This method finds the package with the matching product identifier and purchases it
+   */
+  async purchaseProduct(productId: string): Promise<CustomerInfo> {
+    try {
+      const offering = await this.getOfferings();
+
+      if (!offering) {
+        throw new Error('No offerings available');
+      }
+
+      // Find package with matching product identifier
+      const pkg = offering.availablePackages.find(
+        p => p.product.identifier === productId
+      );
+
+      if (!pkg) {
+        throw new Error(`Product ${productId} not found in offerings`);
+      }
+
+      return await this.purchasePackage(pkg);
+    } catch (error) {
+      console.error('Error purchasing product:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Cleanup RevenueCat resources
    */
   cleanup(): void {
@@ -138,5 +167,79 @@ export function getLevelPackProductId(packNumber: number): string {
       return IAP_PRODUCTS.LEVEL_PACK_3;
     default:
       return IAP_PRODUCTS.LEVEL_PACK_1;
+  }
+}
+
+/**
+ * Helper to check if premium is active
+ */
+export function isPremiumActive(customerInfo: CustomerInfo): boolean {
+  return customerInfo.entitlements.active['premium'] !== undefined;
+}
+
+/**
+ * Get coin amount for a product ID
+ */
+export function getCoinAmountForProduct(productId: string): number {
+  const {COIN_AMOUNTS} = require('@/config/constants');
+
+  switch (productId) {
+    case IAP_PRODUCTS.COINS_SMALL:
+      return COIN_AMOUNTS.SMALL;
+    case IAP_PRODUCTS.COINS_MEDIUM:
+      return COIN_AMOUNTS.MEDIUM;
+    case IAP_PRODUCTS.COINS_LARGE:
+      return COIN_AMOUNTS.LARGE;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Sync purchases from RevenueCat with local user profile
+ * This ensures the local state matches what RevenueCat has on record
+ */
+export async function syncPurchasesWithRevenueCat(
+  currentProfile: UserProfile,
+): Promise<UserProfile> {
+  try {
+    const customerInfo = await IAPService.getCustomerInfo();
+
+    const updatedProfile = {...currentProfile};
+
+    // Sync level pack purchases
+    const purchasedLevels = new Set<number>(currentProfile.purchasedLevels);
+
+    if (customerInfo.entitlements.active['level_pack_2']) {
+      // Add levels 21-40
+      for (let i = 21; i <= 40; i++) {
+        purchasedLevels.add(i);
+      }
+    }
+
+    if (customerInfo.entitlements.active['level_pack_3']) {
+      // Add levels 41-60
+      for (let i = 41; i <= 60; i++) {
+        purchasedLevels.add(i);
+      }
+    }
+
+    updatedProfile.purchasedLevels = Array.from(purchasedLevels).sort(
+      (a, b) => a - b,
+    );
+
+    // Sync premium status
+    updatedProfile.hasPremium = isPremiumActive(customerInfo);
+
+    console.log('Synced purchases with RevenueCat:', {
+      purchasedLevels: updatedProfile.purchasedLevels.length,
+      hasPremium: updatedProfile.hasPremium,
+    });
+
+    return updatedProfile;
+  } catch (error) {
+    console.error('Error syncing purchases:', error);
+    // Return original profile if sync fails
+    return currentProfile;
   }
 }

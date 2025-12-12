@@ -136,6 +136,18 @@ export const IAP_PRODUCTS = {
   PREMIUM_UNLOCK: 'com.letterloom.premium.unlock',
 };
 
+export const COIN_AMOUNTS = {
+  SMALL: 250,
+  MEDIUM: 1000,
+  LARGE: 3000,
+};
+
+export const COIN_REWARDS = {
+  BASE: 10, // Base coins per level completion
+  PER_STAR: 5, // Additional coins per star (1 star = 15, 2 = 20, 3 = 25)
+  PREMIUM_MULTIPLIER: 2, // Premium users get 2x coins
+};
+
 export const ANIMATIONS = {
   TILE_SELECT_DURATION: 150,
   TILE_DESELECT_DURATION: 100,
