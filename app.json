@@ -52,9 +52,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "your-project-id-here"
+        "projectId": "b7caf0c9-8312-483a-8f1b-79d6b788509e"
       }
     },
-    "owner": "your-expo-username"
+    "owner": "deanandreakis"
   }
 }
