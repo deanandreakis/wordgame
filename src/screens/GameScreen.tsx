@@ -7,14 +7,15 @@ import {
   TouchableOpacity,
   Text,
   ScrollView,
+  AppState,
 } from 'react-native';
-import LinearGradient from 'expo-linear-gradient';
+import {LinearGradient} from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import {GameBoard} from '@/components/GameBoard';
 import {WordInput} from '@/components/WordInput';
 import {ScoreDisplay} from '@/components/ScoreDisplay';
 import {ParticleEffect} from '@/components/ParticleEffect';
-import {GAME_CONFIG} from '@/config/constants';
+import {GAME_CONFIG, ANIMATIONS} from '@/config/constants';
 import {Letter, GameState, Level, Word} from '@/types/game';
 import {
   validateWord,
@@ -60,22 +61,53 @@ export const GameScreen: React.FC<Props> = ({
     undefined,
   );
 
-  // Timer effect
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const particleTimeoutsRef = React.useRef<NodeJS.Timeout[]>([]);
+
+  // Timer effect - only set up once, not on every timeRemaining change
   useEffect(() => {
-    if (level.timeLimit && gameState.timeRemaining !== undefined) {
-      if (gameState.timeRemaining <= 0) {
-        handleGameEnd();
-        return;
+    if (level.timeLimit && !gameState.isPaused) {
+      // Clear any existing timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
       }
 
-      const timer = setInterval(() => {
-        setGameState(prev => ({
-          ...prev,
-          timeRemaining: prev.timeRemaining ? prev.timeRemaining - 1 : 0,
-        }));
+      // Start new timer
+      timerRef.current = setInterval(() => {
+        setGameState(prev => {
+          const newTime = prev.timeRemaining ? prev.timeRemaining - 1 : 0;
+          // Check if time is up
+          if (newTime <= 0) {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+          }
+          return {
+            ...prev,
+            timeRemaining: newTime,
+          };
+        });
       }, 1000);
+    } else if (gameState.isPaused && timerRef.current) {
+      // Pause timer
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
 
-      return () => clearInterval(timer);
+    // Cleanup on unmount
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [level.timeLimit, gameState.isPaused]);
+
+  // Check for game end when time runs out
+  useEffect(() => {
+    if (level.timeLimit && gameState.timeRemaining !== undefined && gameState.timeRemaining <= 0) {
+      handleGameEnd();
     }
   }, [gameState.timeRemaining]);
 
@@ -86,10 +118,41 @@ export const GameScreen: React.FC<Props> = ({
     }
   }, [gameState.score]);
 
+  // Handle app backgrounding/foregrounding
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        // App came back to foreground - reset selected letters and force re-render
+        setGameState(prev => ({...prev, selectedLetters: []}));
+        setLetters(prev => prev.map(letter => ({...letter, isSelected: false})));
+      } else if (nextAppState === 'background') {
+        // App went to background - pause game and clear selections
+        setGameState(prev => ({
+          ...prev,
+          isPaused: true,
+          selectedLetters: [],
+        }));
+        setLetters(prev => prev.map(letter => ({...letter, isSelected: false})));
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   // Save game state
   useEffect(() => {
     saveGameState(gameState);
   }, [gameState]);
+
+  // Cleanup particle timeouts on unmount
+  useEffect(() => {
+    return () => {
+      particleTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      particleTimeoutsRef.current = [];
+    };
+  }, []);
 
   const handleLetterPress = useCallback((letter: Letter) => {
     setGameState(prev => {
@@ -172,10 +235,11 @@ export const GameScreen: React.FC<Props> = ({
         ...prev,
         {x: centerX, y: centerY, id: Date.now()},
       ]);
-      setTimeout(
+      const particleTimeout = setTimeout(
         () => setParticles(prev => prev.slice(1)),
         ANIMATIONS.PARTICLE_LIFETIME,
       );
+      particleTimeoutsRef.current.push(particleTimeout);
 
       // Update game state
       const newWord: Word = {
@@ -357,7 +421,7 @@ const styles = StyleSheet.create({
   },
   quitText: {
     fontSize: 24,
-    color: '#FFFFFF',
+    color: GAME_CONFIG.COLORS.text,
     fontWeight: 'bold',
   },
   stats: {

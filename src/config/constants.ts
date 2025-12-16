@@ -14,22 +14,39 @@ export const GAME_CONFIG = {
   },
   FREE_LEVELS: 20,
   COLORS: {
-    primary: '#6C5CE7',
-    secondary: '#A29BFE',
-    accent: '#FD79A8',
-    success: '#00B894',
-    warning: '#FDCB6E',
-    danger: '#FF7675',
-    background: '#0F0F1E',
-    backgroundLight: '#1A1A2E',
-    text: '#FFFFFF',
-    textSecondary: '#B2BFCC',
-    cardBg: '#16213E',
-    gradient1: '#667EEA',
-    gradient2: '#764BA2',
-    tile: '#2D3561',
-    tileSelected: '#6C5CE7',
-    tileBonus: '#F093FB',
+    // PRIMARY GREENS - Nature/Forest theme
+    primary: '#2D5F3F',           // Deep Forest Green (was #6C5CE7 purple)
+    secondary: '#5A9E7A',         // Sage Green (was #A29BFE light purple)
+    accent: '#8FBC8F',            // Moss Green (was #FD79A8 pink)
+
+    // FUNCTIONAL COLORS
+    success: '#4CAF50',           // Vibrant Leaf Green (was #00B894)
+    warning: '#FFB74D',           // Amber/Golden Hour (was #FDCB6E)
+    danger: '#E57373',            // Muted Red/Berry (was #FF7675)
+
+    // DARK BACKGROUNDS - Forest night theme
+    background: '#0D1F12',        // Very Dark Forest Green/Black (was #0F0F1E)
+    backgroundLight: '#1A2E1F',   // Dark Pine (was #1A1A2E)
+    cardBg: '#1E3A24',            // Dark Moss (was #16213E)
+
+    // TEXT COLORS
+    text: '#F5F5F5',              // Soft White (was #FFFFFF)
+    textSecondary: '#9DB3A0',     // Misty Sage (was #B2BFCC)
+
+    // GRADIENTS - Organic green flows
+    gradient1: '#3D7C52',         // Emerald (was #667EEA)
+    gradient2: '#2D5F3F',         // Deep Forest (was #764BA2)
+
+    // TILE COLORS
+    tile: '#2C4A33',              // Forest Floor (was #2D3561)
+    tileSelected: '#3D7C52',      // Emerald Highlight (was #6C5CE7)
+    tileBonus: '#7CB342',         // Fresh Spring Green (was #F093FB)
+
+    // NEW COLORS - Enhanced nature theme
+    glowGreen: '#6FD88E',         // Firefly Glow - for animations
+    earthBrown: '#3E2723',        // Rich Earth - optional accents
+    dewDrop: '#B3E5C8',           // Light Mint - subtle highlights
+    shadowGreen: '#0A1810',       // Deep Shadow - for depth
   },
 };
 

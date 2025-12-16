@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import LinearGradient from 'expo-linear-gradient';
+import {LinearGradient} from 'expo-linear-gradient';
 import {GAME_CONFIG, IAP_PRODUCTS} from '@/config/constants';
 import {generateLevel} from '@/utils/gameLogic';
 import {Level, UserProfile} from '@/types/game';
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     color: GAME_CONFIG.COLORS.textSecondary,
   },
   packButtonTextActive: {
-    color: '#FFFFFF',
+    color: GAME_CONFIG.COLORS.text,
   },
   packPrice: {
     fontSize: 10,

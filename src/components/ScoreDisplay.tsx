@@ -1,6 +1,6 @@
 import React, {useEffect, useRef} from 'react';
 import {View, Text, StyleSheet, Animated} from 'react-native';
-import LinearGradient from 'expo-linear-gradient';
+import {LinearGradient} from 'expo-linear-gradient';
 import {GAME_CONFIG} from '@/config/constants';
 
 interface Props {
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginHorizontal: 16,
     marginTop: 16,
-    shadowColor: '#000',
+    shadowColor: GAME_CONFIG.COLORS.shadowGreen,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 6,

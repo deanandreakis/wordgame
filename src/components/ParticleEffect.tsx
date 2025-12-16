@@ -13,6 +13,7 @@ interface Particle {
   opacity: Animated.Value;
   translateX: Animated.Value;
   translateY: Animated.Value;
+  rotate: Animated.Value;  // Add rotation for firefly effect
 }
 
 interface Props {
@@ -31,12 +32,18 @@ export const ParticleEffect: React.FC<Props> = ({
   count = 12,
 }) => {
   const particles = useRef<Particle[]>([]);
+  const animationsRef = useRef<Animated.CompositeAnimation[]>([]);
 
   useEffect(() => {
-    // Generate particles
+    // Stop any running animations
+    animationsRef.current.forEach(anim => anim.stop());
+    animationsRef.current = [];
+
+    // Generate particles - firefly-like floating effect
     particles.current = Array.from({length: count}, (_, i) => {
       const angle = (Math.PI * 2 * i) / count;
-      const velocity = 2 + Math.random() * 3;
+      const velocity = (2 + Math.random() * 3) * 0.7;  // Reduced by 30% for floating effect
+      const spiralFactor = 0.8 + Math.random() * 0.4;  // Varying speeds for spiral
 
       return {
         id: i,
@@ -44,22 +51,25 @@ export const ParticleEffect: React.FC<Props> = ({
         y,
         size: 4 + Math.random() * 8,
         color: [
-          GAME_CONFIG.COLORS.primary,
-          GAME_CONFIG.COLORS.accent,
-          GAME_CONFIG.COLORS.warning,
-          GAME_CONFIG.COLORS.success,
+          GAME_CONFIG.COLORS.glowGreen,  // Firefly effect
+          GAME_CONFIG.COLORS.accent,      // Moss green
+          GAME_CONFIG.COLORS.dewDrop,     // Light mint
+          GAME_CONFIG.COLORS.success,     // Leaf green
         ][Math.floor(Math.random() * 4)],
-        velocityX: Math.cos(angle) * velocity,
+        velocityX: Math.cos(angle) * velocity * spiralFactor,
         velocityY: Math.sin(angle) * velocity,
         opacity: new Animated.Value(1),
         translateX: new Animated.Value(0),
         translateY: new Animated.Value(0),
+        rotate: new Animated.Value(0),  // Initial rotation
       };
     });
 
-    // Animate particles
+    // Animate particles with rotation and spiral motion
     particles.current.forEach(particle => {
-      Animated.parallel([
+      const rotationDirection = Math.random() > 0.5 ? 1 : -1;  // Random spin direction
+
+      const animation = Animated.parallel([
         Animated.timing(particle.opacity, {
           toValue: 0,
           duration: ANIMATIONS.PARTICLE_LIFETIME,
@@ -75,8 +85,21 @@ export const ParticleEffect: React.FC<Props> = ({
           duration: ANIMATIONS.PARTICLE_LIFETIME,
           useNativeDriver: true,
         }),
-      ]).start();
+        Animated.timing(particle.rotate, {
+          toValue: rotationDirection * 360,  // Full rotation
+          duration: ANIMATIONS.PARTICLE_LIFETIME,
+          useNativeDriver: true,
+        }),
+      ]);
+      animationsRef.current.push(animation);
+      animation.start();
     });
+
+    // Cleanup function to stop all animations
+    return () => {
+      animationsRef.current.forEach(anim => anim.stop());
+      animationsRef.current = [];
+    };
   }, [x, y, count]);
 
   return (
@@ -96,6 +119,12 @@ export const ParticleEffect: React.FC<Props> = ({
               transform: [
                 {translateX: particle.translateX},
                 {translateY: particle.translateY},
+                {
+                  rotate: particle.rotate.interpolate({
+                    inputRange: [0, 360],
+                    outputRange: ['0deg', '360deg'],
+                  }),
+                },
               ],
             },
           ]}

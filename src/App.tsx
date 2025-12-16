@@ -1,9 +1,10 @@
 import React, {useState, useEffect} from 'react';
-import {StatusBar} from 'react-native';
+import {StatusBar, View, Text, TouchableOpacity} from 'react-native';
 import {MenuScreen} from './screens/MenuScreen';
 import {LevelSelectScreen} from './screens/LevelSelectScreen';
 import {GameScreen} from './screens/GameScreen';
 import {ShopScreen} from './screens/ShopScreen';
+import {HelpScreen} from './screens/HelpScreen';
 import {Level, UserProfile} from './types/game';
 import {FirebaseAuth, FirebaseFirestore} from './services/firebase';
 import {
@@ -20,7 +21,7 @@ import {
 import {IAP_PRODUCTS, COIN_REWARDS} from './config/constants';
 import type {CustomerInfo} from 'react-native-purchases';
 
-type Screen = 'menu' | 'levelSelect' | 'game' | 'leaderboard' | 'shop';
+type Screen = 'menu' | 'levelSelect' | 'game' | 'leaderboard' | 'shop' | 'help';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('menu');
@@ -36,12 +37,96 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // Set up IAP purchase callbacks - updates when userProfile changes
+  useEffect(() => {
+    if (!userProfile) return;
+
+    IAPService.onPurchaseSuccess = async (customerInfo: CustomerInfo) => {
+      console.log('Purchase successful:', customerInfo);
+
+      let updatedProfile = {...userProfile};
+
+      // Check for level pack purchases
+      const levelPackEntitlements = {
+        level_pack_2: IAP_PRODUCTS.LEVEL_PACK_2,
+        level_pack_3: IAP_PRODUCTS.LEVEL_PACK_3,
+      };
+
+      Object.entries(levelPackEntitlements).forEach(
+        ([entitlement, productId]) => {
+          if (customerInfo.entitlements.active[entitlement]) {
+            // Add levels for this pack
+            const packNumber =
+              productId === IAP_PRODUCTS.LEVEL_PACK_2 ? 2 : 3;
+            const startLevel = (packNumber - 1) * 20 + 1;
+            const newLevels = Array.from(
+              {length: 20},
+              (_, i) => startLevel + i,
+            );
+
+            // Merge with existing purchased levels
+            updatedProfile.purchasedLevels = [
+              ...new Set([
+                ...updatedProfile.purchasedLevels,
+                ...newLevels,
+              ]),
+            ];
+          }
+        },
+      );
+
+      // Check for premium purchase
+      if (isPremiumActive(customerInfo)) {
+        updatedProfile.hasPremium = true;
+      }
+
+      // Check for coin purchases (consumables - use last transaction)
+      const latestTransaction = Object.values(
+        customerInfo.nonSubscriptionTransactions,
+      )[0];
+      if (latestTransaction) {
+        const coinAmount = getCoinAmountForProduct(
+          latestTransaction.productIdentifier,
+        );
+        if (coinAmount > 0) {
+          updatedProfile.coins += coinAmount;
+          console.log(`Added ${coinAmount} coins`);
+        }
+      }
+
+      // Save updated profile
+      setUserProfile(updatedProfile);
+      await saveUserProfile(updatedProfile);
+
+      // Try to save to Firebase, but don't fail if it doesn't work
+      try {
+        await FirebaseFirestore.saveUserProfile(updatedProfile);
+      } catch (error) {
+        console.warn('Could not save updated profile to Firebase:', error);
+      }
+
+      console.log('Profile updated after purchase');
+    };
+
+    IAPService.onPurchaseError = (error: any) => {
+      console.error('Purchase error:', error);
+    };
+  }, [userProfile]);
+
   const initializeApp = async () => {
     try {
       // Initialize Firebase Auth
-      let userId = FirebaseAuth.getCurrentUserId();
-      if (!userId) {
-        userId = await FirebaseAuth.signInAnonymously();
+      let userId: string;
+      try {
+        userId = FirebaseAuth.getCurrentUserId() || '';
+        if (!userId) {
+          userId = await FirebaseAuth.signInAnonymously();
+        }
+      } catch (firebaseError) {
+        console.error('Firebase initialization failed:', firebaseError);
+        // Generate a temporary local user ID for offline use
+        userId = `offline_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        console.log('Using offline mode with temporary user ID');
       }
 
       // Load or create user profile
@@ -62,7 +147,13 @@ const App: React.FC = () => {
           lastPlayedDate: new Date().toISOString(),
         };
         await saveUserProfile(profile);
-        await FirebaseFirestore.saveUserProfile(profile);
+
+        // Try to save to Firebase, but don't fail if it doesn't work
+        try {
+          await FirebaseFirestore.saveUserProfile(profile);
+        } catch (error) {
+          console.warn('Could not save profile to Firebase:', error);
+        }
       }
 
       setUserProfile(profile);
@@ -88,75 +179,6 @@ const App: React.FC = () => {
         console.error('Failed to sync purchases:', error);
         // Continue anyway - user can manually restore purchases
       }
-
-      // Set up IAP callbacks
-      IAPService.onPurchaseSuccess = async (customerInfo: CustomerInfo) => {
-        console.log('Purchase successful:', customerInfo);
-
-        if (!userProfile) return;
-
-        let updatedProfile = {...userProfile};
-
-        // Check for level pack purchases
-        const levelPackEntitlements = {
-          level_pack_2: IAP_PRODUCTS.LEVEL_PACK_2,
-          level_pack_3: IAP_PRODUCTS.LEVEL_PACK_3,
-        };
-
-        Object.entries(levelPackEntitlements).forEach(
-          ([entitlement, productId]) => {
-            if (customerInfo.entitlements.active[entitlement]) {
-              // Add levels for this pack
-              const packNumber =
-                productId === IAP_PRODUCTS.LEVEL_PACK_2 ? 2 : 3;
-              const startLevel = (packNumber - 1) * 20 + 1;
-              const endLevel = packNumber * 20;
-              const newLevels = Array.from(
-                {length: 20},
-                (_, i) => startLevel + i,
-              );
-
-              // Merge with existing purchased levels
-              updatedProfile.purchasedLevels = [
-                ...new Set([
-                  ...updatedProfile.purchasedLevels,
-                  ...newLevels,
-                ]),
-              ];
-            }
-          },
-        );
-
-        // Check for premium purchase
-        if (isPremiumActive(customerInfo)) {
-          updatedProfile.hasPremium = true;
-        }
-
-        // Check for coin purchases (consumables - use last transaction)
-        const latestTransaction = Object.values(
-          customerInfo.nonSubscriptionTransactions,
-        )[0];
-        if (latestTransaction) {
-          const coinAmount = getCoinAmountForProduct(
-            latestTransaction.productIdentifier,
-          );
-          if (coinAmount > 0) {
-            updatedProfile.coins += coinAmount;
-            console.log(`Added ${coinAmount} coins`);
-          }
-        }
-
-        // Save updated profile
-        setUserProfile(updatedProfile);
-        await saveUserProfile(updatedProfile);
-        await FirebaseFirestore.saveUserProfile(updatedProfile);
-
-        console.log('Profile updated after purchase');
-      };
-
-      IAPService.onPurchaseError = (error: any) => {
-        console.error('Purchase error:', error);
-      };
 
       setIsInitialized(true);
     } catch (error) {
@@ -189,16 +211,22 @@ const App: React.FC = () => {
 
       setUserProfile(updatedProfile);
       await saveUserProfile(updatedProfile);
-      await FirebaseFirestore.saveUserProfile(updatedProfile);
 
-      // Update leaderboard
-      await FirebaseFirestore.updateLeaderboard({
-        userId: userProfile.userId,
-        displayName: userProfile.displayName,
-        score: updatedProfile.totalScore,
-        level: updatedProfile.highestLevel,
-        timestamp: Date.now(),
-      });
+      // Try to save to Firebase, but don't fail if it doesn't work
+      try {
+        await FirebaseFirestore.saveUserProfile(updatedProfile);
+
+        // Update leaderboard
+        await FirebaseFirestore.updateLeaderboard({
+          userId: userProfile.userId,
+          displayName: userProfile.displayName,
+          score: updatedProfile.totalScore,
+          level: updatedProfile.highestLevel,
+          timestamp: Date.now(),
+        });
+      } catch (error) {
+        console.warn('Could not sync with Firebase:', error);
+      }
 
       console.log(
         `Level complete! Earned ${coinReward} coins (${baseReward} base ${userProfile.hasPremium ? '× 2 premium' : ''})`,
@@ -227,22 +255,31 @@ const App: React.FC = () => {
     setCurrentScreen('shop');
   };
 
+  const handleHelpPress = () => {
+    setCurrentScreen('help');
+  };
+
   const handleBackToMenu = () => {
     setCurrentScreen('menu');
   };
 
   if (!isInitialized) {
-    return null; // Or a loading screen
+    return (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: GAME_CONFIG.COLORS.background}}>
+        <Text style={{color: GAME_CONFIG.COLORS.text, fontSize: 24}}>Loading...</Text>
+      </View>
+    );
   }
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#0F0F1E" />
+      <StatusBar barStyle="light-content" backgroundColor={GAME_CONFIG.COLORS.background} />
       {currentScreen === 'menu' && (
         <MenuScreen
           onPlayPress={handlePlayPress}
           onLeaderboardPress={handleLeaderboardPress}
           onShopPress={handleShopPress}
+          onHelpPress={handleHelpPress}
         />
       )}
       {currentScreen === 'levelSelect' && (
@@ -261,6 +298,20 @@ const App: React.FC = () => {
       )}
       {currentScreen === 'shop' && (
         <ShopScreen onBack={handleBackToMenu} userProfile={userProfile} />
+      )}
+      {currentScreen === 'leaderboard' && (
+        <View style={{flex: 1, backgroundColor: GAME_CONFIG.COLORS.background, justifyContent: 'center', alignItems: 'center', padding: 20}}>
+          <Text style={{color: GAME_CONFIG.COLORS.text, fontSize: 32, fontWeight: 'bold', marginBottom: 20}}>🏆 Leaderboard</Text>
+          <Text style={{color: GAME_CONFIG.COLORS.textSecondary, fontSize: 16, marginBottom: 40, textAlign: 'center'}}>Coming Soon!</Text>
+          <TouchableOpacity
+            onPress={handleBackToMenu}
+            style={{backgroundColor: GAME_CONFIG.COLORS.primary, paddingVertical: 16, paddingHorizontal: 32, borderRadius: 12}}>
+            <Text style={{color: GAME_CONFIG.COLORS.text, fontSize: 18, fontWeight: 'bold'}}>← Back to Menu</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {currentScreen === 'help' && (
+        <HelpScreen onBack={handleBackToMenu} />
       )}
     </>
   );

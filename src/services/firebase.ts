@@ -1,6 +1,8 @@
 import {initializeApp, getApps, FirebaseApp} from 'firebase/app';
 import {
   getAuth,
+  initializeAuth,
+  getReactNativePersistence,
   signInAnonymously as firebaseSignInAnonymously,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -21,6 +23,7 @@ import {
   serverTimestamp,
   getCountFromServer,
 } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import {UserProfile, LeaderboardEntry, DailyChallenge} from '@/types/game';
 
@@ -42,19 +45,46 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   );
 }
 
-// Initialize Firebase
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+// Lazy initialization variables
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
+let isInitialized = false;
 
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-} else {
-  app = getApps()[0];
-  auth = getAuth(app);
-  db = getFirestore(app);
+/**
+ * Initialize Firebase (called lazily on first use)
+ */
+function ensureInitialized() {
+  if (isInitialized) {
+    return;
+  }
+
+  try {
+    if (!getApps().length) {
+      // First initialization - create new app and auth with persistence
+      app = initializeApp(firebaseConfig);
+      try {
+        auth = initializeAuth(app, {
+          persistence: getReactNativePersistence(AsyncStorage),
+        });
+      } catch (authError: any) {
+        // If initializeAuth fails, try getAuth as fallback
+        console.warn('initializeAuth failed, falling back to getAuth:', authError.message);
+        auth = getAuth(app);
+      }
+      db = getFirestore(app);
+    } else {
+      // App already exists (shouldn't happen with our check, but handle it)
+      app = getApps()[0];
+      auth = getAuth(app);
+      db = getFirestore(app);
+    }
+
+    isInitialized = true;
+  } catch (error) {
+    console.error('Failed to initialize Firebase:', error);
+    throw error;
+  }
 }
 
 /**
@@ -62,8 +92,9 @@ if (!getApps().length) {
  */
 export const FirebaseAuth = {
   async signInAnonymously(): Promise<string> {
+    ensureInitialized();
     try {
-      const userCredential = await firebaseSignInAnonymously(auth);
+      const userCredential = await firebaseSignInAnonymously(auth!);
       return userCredential.user.uid;
     } catch (error) {
       console.error('Error signing in anonymously:', error);
@@ -72,12 +103,14 @@ export const FirebaseAuth = {
   },
 
   getCurrentUserId(): string | null {
-    return auth.currentUser?.uid || null;
+    ensureInitialized();
+    return auth!.currentUser?.uid || null;
   },
 
   async signOut(): Promise<void> {
+    ensureInitialized();
     try {
-      await firebaseSignOut(auth);
+      await firebaseSignOut(auth!);
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
@@ -85,7 +118,8 @@ export const FirebaseAuth = {
   },
 
   onAuthStateChanged(callback: (userId: string | null) => void) {
-    return onAuthStateChanged(auth, user => {
+    ensureInitialized();
+    return onAuthStateChanged(auth!, user => {
       callback(user?.uid || null);
     });
   },
@@ -99,8 +133,9 @@ export const FirebaseFirestore = {
    * Save user profile to Firestore
    */
   async saveUserProfile(profile: UserProfile): Promise<void> {
+    ensureInitialized();
     try {
-      const userDocRef = doc(db, 'users', profile.userId);
+      const userDocRef = doc(db!, 'users', profile.userId);
       await setDoc(userDocRef, profile, {merge: true});
     } catch (error) {
       console.error('Error saving user profile:', error);
@@ -112,8 +147,9 @@ export const FirebaseFirestore = {
    * Get user profile from Firestore
    */
   async getUserProfile(userId: string): Promise<UserProfile | null> {
+    ensureInitialized();
     try {
-      const userDocRef = doc(db, 'users', userId);
+      const userDocRef = doc(db!, 'users', userId);
       const docSnap = await getDoc(userDocRef);
 
       if (!docSnap.exists()) {
@@ -131,8 +167,9 @@ export const FirebaseFirestore = {
    * Update user score in leaderboard
    */
   async updateLeaderboard(entry: LeaderboardEntry): Promise<void> {
+    ensureInitialized();
     try {
-      const leaderboardDocRef = doc(db, 'leaderboard', entry.userId);
+      const leaderboardDocRef = doc(db!, 'leaderboard', entry.userId);
       await setDoc(leaderboardDocRef, entry, {merge: true});
     } catch (error) {
       console.error('Error updating leaderboard:', error);
@@ -144,8 +181,9 @@ export const FirebaseFirestore = {
    * Get top players from leaderboard
    */
   async getTopPlayers(limitCount: number = 10): Promise<LeaderboardEntry[]> {
+    ensureInitialized();
     try {
-      const leaderboardRef = collection(db, 'leaderboard');
+      const leaderboardRef = collection(db!, 'leaderboard');
       const q = query(
         leaderboardRef,
         orderBy('score', 'desc'),
@@ -164,8 +202,9 @@ export const FirebaseFirestore = {
    * Get user rank on leaderboard
    */
   async getUserRank(userId: string): Promise<number> {
+    ensureInitialized();
     try {
-      const userDocRef = doc(db, 'leaderboard', userId);
+      const userDocRef = doc(db!, 'leaderboard', userId);
       const userDocSnap = await getDoc(userDocRef);
 
       if (!userDocSnap.exists()) {
@@ -174,7 +213,7 @@ export const FirebaseFirestore = {
 
       const userData = userDocSnap.data() as LeaderboardEntry;
 
-      const leaderboardRef = collection(db, 'leaderboard');
+      const leaderboardRef = collection(db!, 'leaderboard');
       const q = query(leaderboardRef, where('score', '>', userData.score));
       const snapshot = await getCountFromServer(q);
 
@@ -189,8 +228,9 @@ export const FirebaseFirestore = {
    * Get daily challenge
    */
   async getDailyChallenge(date: string): Promise<DailyChallenge | null> {
+    ensureInitialized();
     try {
-      const challengeDocRef = doc(db, 'dailyChallenges', date);
+      const challengeDocRef = doc(db!, 'dailyChallenges', date);
       const docSnap = await getDoc(challengeDocRef);
 
       if (!docSnap.exists()) {
@@ -211,9 +251,10 @@ export const FirebaseFirestore = {
     userId: string,
     challengeId: string,
   ): Promise<void> {
+    ensureInitialized();
     try {
       const completedChallengeRef = doc(
-        db,
+        db!,
         'users',
         userId,
         'completedChallenges',

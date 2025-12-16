@@ -1,5 +1,5 @@
 import {Platform} from 'react-native';
-import Purchases, {
+import type {
   PurchasesOffering,
   PurchasesPackage,
   CustomerInfo,
@@ -9,15 +9,56 @@ import {IAP_PRODUCTS} from '@/config/constants';
 import type {UserProfile} from '@/types/game';
 
 /**
+ * Check if RevenueCat native module is available
+ * Returns false when running in Expo Go (which doesn't include native modules)
+ */
+function isNativeModuleAvailable(): boolean {
+  try {
+    // Try to require the module - will throw if not available
+    require('react-native-purchases');
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Get Purchases module (lazy loaded)
+ */
+function getPurchases() {
+  try {
+    return require('react-native-purchases').default;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
  * RevenueCat IAP Service for Expo
  * Works with both iOS and Android
  * API keys are loaded from secure environment variables via app.config.js
+ * Gracefully handles Expo Go (where native module is not available)
  */
 export const IAPService = {
+  isAvailable: isNativeModuleAvailable(),
+
   /**
    * Initialize RevenueCat with platform-specific API key from environment
    */
   async initialize(): Promise<void> {
+    if (!this.isAvailable) {
+      console.warn(
+        'RevenueCat not available - running in Expo Go. Build a development client to test IAP functionality.',
+      );
+      return;
+    }
+
+    const Purchases = getPurchases();
+    if (!Purchases) {
+      console.warn('RevenueCat module not found');
+      return;
+    }
+
     try {
       // Get API key based on platform from expo-constants
       const apiKey =
@@ -44,6 +85,14 @@ export const IAPService = {
    * Get available offerings
    */
   async getOfferings(): Promise<PurchasesOffering | null> {
+    if (!this.isAvailable) {
+      console.warn('RevenueCat not available');
+      return null;
+    }
+
+    const Purchases = getPurchases();
+    if (!Purchases) return null;
+
     try {
       const offerings = await Purchases.getOfferings();
       return offerings.current;
@@ -57,6 +106,17 @@ export const IAPService = {
    * Purchase a package
    */
   async purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo> {
+    if (!this.isAvailable) {
+      throw new Error(
+        'RevenueCat not available - build a development client to test purchases',
+      );
+    }
+
+    const Purchases = getPurchases();
+    if (!Purchases) {
+      throw new Error('RevenueCat module not found');
+    }
+
     try {
       const {customerInfo} = await Purchases.purchasePackage(pkg);
 
@@ -80,6 +140,17 @@ export const IAPService = {
    * Restore purchases
    */
   async restorePurchases(): Promise<CustomerInfo> {
+    if (!this.isAvailable) {
+      throw new Error(
+        'RevenueCat not available - build a development client to restore purchases',
+      );
+    }
+
+    const Purchases = getPurchases();
+    if (!Purchases) {
+      throw new Error('RevenueCat module not found');
+    }
+
     try {
       const customerInfo = await Purchases.restorePurchases();
       return customerInfo;
@@ -93,6 +164,15 @@ export const IAPService = {
    * Get customer info
    */
   async getCustomerInfo(): Promise<CustomerInfo> {
+    if (!this.isAvailable) {
+      throw new Error('RevenueCat not available');
+    }
+
+    const Purchases = getPurchases();
+    if (!Purchases) {
+      throw new Error('RevenueCat module not found');
+    }
+
     try {
       const customerInfo = await Purchases.getCustomerInfo();
       return customerInfo;
@@ -107,6 +187,12 @@ export const IAPService = {
    * This method finds the package with the matching product identifier and purchases it
    */
   async purchaseProduct(productId: string): Promise<CustomerInfo> {
+    if (!this.isAvailable) {
+      throw new Error(
+        'RevenueCat not available - build a development client to test purchases',
+      );
+    }
+
     try {
       const offering = await this.getOfferings();
 
@@ -202,6 +288,13 @@ export function getCoinAmountForProduct(productId: string): number {
 export async function syncPurchasesWithRevenueCat(
   currentProfile: UserProfile,
 ): Promise<UserProfile> {
+  if (!IAPService.isAvailable) {
+    console.warn(
+      'RevenueCat not available - skipping purchase sync (running in Expo Go)',
+    );
+    return currentProfile;
+  }
+
   try {
     const customerInfo = await IAPService.getCustomerInfo();
 

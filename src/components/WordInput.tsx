@@ -1,6 +1,6 @@
 import React, {useEffect, useRef} from 'react';
 import {View, Text, StyleSheet, Animated, TouchableOpacity} from 'react-native';
-import LinearGradient from 'expo-linear-gradient';
+import {LinearGradient} from 'expo-linear-gradient';
 import {GAME_CONFIG} from '@/config/constants';
 import {Letter} from '@/types/game';
 
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     minHeight: 60,
-    shadowColor: '#000',
+    shadowColor: GAME_CONFIG.COLORS.shadowGreen,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   clearText: {
     fontSize: 24,
-    color: '#FFFFFF',
+    color: GAME_CONFIG.COLORS.text,
     fontWeight: 'bold',
   },
   submitButton: {
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   },
   submitText: {
     fontSize: 24,
-    color: '#FFFFFF',
+    color: GAME_CONFIG.COLORS.text,
     fontWeight: 'bold',
   },
 });

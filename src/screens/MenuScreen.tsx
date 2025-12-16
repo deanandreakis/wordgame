@@ -7,7 +7,7 @@ import {
   SafeAreaView,
   Animated,
 } from 'react-native';
-import LinearGradient from 'expo-linear-gradient';
+import {LinearGradient} from 'expo-linear-gradient';
 import {GAME_CONFIG} from '@/config/constants';
 import {getUserProfile} from '@/utils/storage';
 import {UserProfile} from '@/types/game';
@@ -16,16 +16,21 @@ interface Props {
   onPlayPress: () => void;
   onLeaderboardPress: () => void;
   onShopPress: () => void;
+  onHelpPress: () => void;
 }
 
 export const MenuScreen: React.FC<Props> = ({
   onPlayPress,
   onLeaderboardPress,
   onShopPress,
+  onHelpPress,
 }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const titleScale = new Animated.Value(0);
-  const buttonsOpacity = new Animated.Value(0);
+  const titleScale = React.useRef(new Animated.Value(0)).current;
+
+  // Individual button animations for stagger effect
+  const playButtonAnim = React.useRef(new Animated.Value(0)).current;
+  const secondaryButtonsAnim = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadProfile();
@@ -39,15 +44,28 @@ export const MenuScreen: React.FC<Props> = ({
 
   const animateEntrance = () => {
     Animated.sequence([
+      // Title spring entrance
       Animated.spring(titleScale, {
         toValue: 1,
         friction: 5,
         tension: 40,
         useNativeDriver: true,
       }),
-      Animated.timing(buttonsOpacity, {
+      // Stagger play button (100ms delay from title)
+      Animated.parallel([
+        Animated.spring(playButtonAnim, {
+          toValue: 1,
+          friction: 6,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Stagger secondary buttons (100ms delay from play button)
+      Animated.spring(secondaryButtonsAnim, {
         toValue: 1,
-        duration: 500,
+        friction: 6,
+        tension: 50,
+        delay: 100,
         useNativeDriver: true,
       }),
     ]).start();
@@ -91,21 +109,50 @@ export const MenuScreen: React.FC<Props> = ({
             </View>
           )}
 
-          <Animated.View style={[styles.buttons, {opacity: buttonsOpacity}]}>
-            <TouchableOpacity onPress={onPlayPress} activeOpacity={0.8}>
-              <LinearGradient
-                colors={[
-                  GAME_CONFIG.COLORS.gradient1,
-                  GAME_CONFIG.COLORS.gradient2,
-                ]}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 0}}
-                style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>▶ PLAY</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+          <View style={styles.buttons}>
+            {/* Play button - slides up and fades in first */}
+            <Animated.View
+              style={{
+                opacity: playButtonAnim,
+                transform: [
+                  {
+                    translateY: playButtonAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [30, 0],  // Slide up from below
+                    }),
+                  },
+                ],
+              }}>
+              <TouchableOpacity onPress={onPlayPress} activeOpacity={0.85}>
+                <LinearGradient
+                  colors={[
+                    GAME_CONFIG.COLORS.gradient1,
+                    GAME_CONFIG.COLORS.gradient2,
+                  ]}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 0}}
+                  style={styles.primaryButton}>
+                  <Text style={styles.primaryButtonText}>▶ PLAY</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
 
-            <View style={styles.secondaryButtons}>
+            {/* Secondary buttons - slides up and fade in after play button */}
+            <Animated.View
+              style={[
+                styles.secondaryButtons,
+                {
+                  opacity: secondaryButtonsAnim,
+                  transform: [
+                    {
+                      translateY: secondaryButtonsAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [30, 0],  // Slide up from below
+                      }),
+                    },
+                  ],
+                },
+              ]}>
               <TouchableOpacity
                 onPress={onLeaderboardPress}
                 activeOpacity={0.8}
@@ -114,7 +161,7 @@ export const MenuScreen: React.FC<Props> = ({
                   colors={[GAME_CONFIG.COLORS.cardBg, GAME_CONFIG.COLORS.tile]}
                   style={styles.secondaryButton}>
                   <Text style={styles.secondaryButtonText}>🏆</Text>
-                  <Text style={styles.secondaryButtonLabel}>Leaderboard</Text>
+                  <Text style={styles.secondaryButtonLabel}>Leaders</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -129,8 +176,20 @@ export const MenuScreen: React.FC<Props> = ({
                   <Text style={styles.secondaryButtonLabel}>Shop</Text>
                 </LinearGradient>
               </TouchableOpacity>
-            </View>
-          </Animated.View>
+
+              <TouchableOpacity
+                onPress={onHelpPress}
+                activeOpacity={0.8}
+                style={styles.secondaryButtonWrapper}>
+                <LinearGradient
+                  colors={[GAME_CONFIG.COLORS.cardBg, GAME_CONFIG.COLORS.tile]}
+                  style={styles.secondaryButton}>
+                  <Text style={styles.secondaryButtonText}>❓</Text>
+                  <Text style={styles.secondaryButtonLabel}>Help</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
 
           <Text style={styles.version}>v1.0.0</Text>
         </View>
@@ -220,7 +279,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: GAME_CONFIG.COLORS.text,
   },
   secondaryButtons: {
     flexDirection: 'row',

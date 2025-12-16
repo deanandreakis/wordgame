@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import LinearGradient from 'expo-linear-gradient';
+import {LinearGradient} from 'expo-linear-gradient';
 import {GAME_CONFIG, IAP_PRODUCTS, COIN_AMOUNTS} from '@/config/constants';
 import {IAPService, isPremiumActive} from '@/services/iap';
 import {getUserProfile} from '@/utils/storage';
@@ -184,7 +184,7 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
           {hasPremium && (
             <View style={styles.section}>
               <LinearGradient
-                colors={[GAME_CONFIG.COLORS.success, '#00D2A0']}
+                colors={[GAME_CONFIG.COLORS.success, GAME_CONFIG.COLORS.glowGreen]}
                 style={styles.premiumCard}>
                 <Text style={styles.premiumBadge}>👑 PREMIUM ACTIVE</Text>
                 <Text style={styles.premiumTitle}>You're a Premium Member!</Text>
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(111, 216, 142, 0.15)',
   },
   backButton: {
     padding: 8,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: GAME_CONFIG.COLORS.text,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(111, 216, 142, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 24,
     padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(111, 216, 142, 0.15)',
     borderRadius: 12,
     alignItems: 'center',
   },
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(13, 31, 18, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
   },

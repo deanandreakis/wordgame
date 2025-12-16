@@ -6,7 +6,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import LinearGradient from 'expo-linear-gradient';
+import {LinearGradient} from 'expo-linear-gradient';
 import {GAME_CONFIG, ANIMATIONS} from '@/config/constants';
 import {Letter} from '@/types/game';
 import * as Haptics from 'expo-haptics';
@@ -24,30 +24,38 @@ export const LetterTile: React.FC<Props> = ({letter, onPress, disabled}) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+  const glowAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
+    // Stop any running glow animation
+    if (glowAnimationRef.current) {
+      glowAnimationRef.current.stop();
+      glowAnimationRef.current = null;
+    }
+
     if (letter.isSelected) {
-      // Pulsing glow animation for selected tiles
-      Animated.loop(
+      // Pulsing glow animation - slower, meditative breathing effect
+      glowAnimationRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(glowAnim, {
             toValue: 1,
-            duration: 800,
+            duration: 1200,  // Slower for organic feel
             useNativeDriver: true,
           }),
           Animated.timing(glowAnim, {
             toValue: 0,
-            duration: 800,
+            duration: 1200,  // Matches inhale/exhale rhythm
             useNativeDriver: true,
           }),
         ]),
-      ).start();
+      );
+      glowAnimationRef.current.start();
 
-      // Pop animation
+      // Pop animation - smoother, more fluid
       Animated.spring(scaleAnim, {
-        toValue: 1.1,
-        friction: 3,
-        tension: 40,
+        toValue: 1.15,  // Slightly larger bounce
+        friction: 4,    // Smoother deceleration
+        tension: 60,    // Snappier response
         useNativeDriver: true,
       }).start();
     } else {
@@ -58,22 +66,30 @@ export const LetterTile: React.FC<Props> = ({letter, onPress, disabled}) => {
         useNativeDriver: true,
       }).start();
     }
+
+    // Cleanup function
+    return () => {
+      if (glowAnimationRef.current) {
+        glowAnimationRef.current.stop();
+        glowAnimationRef.current = null;
+      }
+    };
   }, [letter.isSelected]);
 
   const handlePress = () => {
     if (!disabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);  // More satisfying feedback
 
-      // Quick bounce animation
+      // Enhanced bounce animation - deeper press, bouncier release
       Animated.sequence([
         Animated.timing(scaleAnim, {
-          toValue: 0.9,
-          duration: 50,
+          toValue: 0.85,  // Deeper press for more satisfaction
+          duration: 60,   // Slightly longer for smoothness
           useNativeDriver: true,
         }),
         Animated.spring(scaleAnim, {
-          toValue: letter.isSelected ? 1 : 1.1,
-          friction: 3,
+          toValue: letter.isSelected ? 1 : 1.15,
+          friction: 2,    // More bouncy release
           useNativeDriver: true,
         }),
       ]).start();
@@ -147,24 +163,25 @@ const styles = StyleSheet.create({
     left: -4,
     right: -4,
     bottom: -4,
-    backgroundColor: GAME_CONFIG.COLORS.primary,
-    borderRadius: 16,
+    backgroundColor: GAME_CONFIG.COLORS.glowGreen,  // Firefly glow effect
+    borderRadius: 18,  // Slightly larger for softer glow
     zIndex: -1,
   },
   tile: {
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: GAME_CONFIG.COLORS.shadowGreen,  // Green-tinted shadow
     shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
     elevation: 8,
   },
   tileSelected: {
-    shadowColor: GAME_CONFIG.COLORS.primary,
-    shadowOpacity: 0.8,
-    elevation: 12,
+    shadowColor: GAME_CONFIG.COLORS.glowGreen,  // Firefly glow on selected
+    shadowOpacity: 0.7,
+    shadowRadius: 16,
+    elevation: 14,
   },
   letter: {
     fontSize: 32,
@@ -172,7 +189,7 @@ const styles = StyleSheet.create({
     color: GAME_CONFIG.COLORS.text,
   },
   letterSelected: {
-    color: '#FFFFFF',
+    color: GAME_CONFIG.COLORS.text,  // Use consistent text color
   },
   multiplier: {
     position: 'absolute',
@@ -181,7 +198,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: GAME_CONFIG.COLORS.warning,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(13, 31, 18, 0.7)',  // Dark green overlay
     borderRadius: 8,
     paddingHorizontal: 4,
     paddingVertical: 2,
