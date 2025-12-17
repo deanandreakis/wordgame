@@ -1,12 +1,12 @@
 import {GAME_CONFIG, LETTER_SCORES, LETTER_FREQUENCIES} from '@/config/constants';
-import {isValidWord} from './dictionary';
 import {Letter, Level, Word} from '@/types/game';
 import {LEVELS} from '@/data/levels';
 
 /**
  * Validates if the selected letters form a valid word
+ * Checks against the level's pre-calculated validWords list instead of global dictionary
  */
-export function validateWord(selectedLetters: Letter[]): {
+export function validateWord(selectedLetters: Letter[], levelId: number): {
   isValid: boolean;
   word: string;
   score: number;
@@ -17,7 +17,15 @@ export function validateWord(selectedLetters: Letter[]): {
     return {isValid: false, word, score: 0};
   }
 
-  const isValid = isValidWord(word);
+  // Find the level data
+  const levelData = LEVELS.find(l => l.id === levelId);
+  if (!levelData) {
+    console.warn(`Level ${levelId} not found`);
+    return {isValid: false, word, score: 0};
+  }
+
+  // Check if word is in the level's pre-calculated valid words list
+  const isValid = levelData.validWords.includes(word);
   const score = isValid ? calculateScore(selectedLetters) : 0;
 
   return {isValid, word, score};
@@ -211,14 +219,20 @@ export function findPossibleWords(
 }
 
 /**
- * Gets a hint word from available letters
+ * Gets a hint word from the level's pre-calculated valid words
  */
 export function getHintWord(
-  letters: Letter[],
+  levelId: number,
   foundWords: string[],
 ): string | null {
-  const possibleWords = findPossibleWords(letters);
-  const unusedWords = possibleWords.filter(w => !foundWords.includes(w));
+  // Get the level's pre-calculated valid words
+  const levelData = LEVELS.find(l => l.id === levelId);
+  if (!levelData) {
+    console.warn(`Level ${levelId} not found`);
+    return null;
+  }
+
+  const unusedWords = levelData.validWords.filter(w => !foundWords.includes(w));
 
   if (unusedWords.length === 0) {
     return null;

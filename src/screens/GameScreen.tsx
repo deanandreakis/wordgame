@@ -196,7 +196,7 @@ export const GameScreen: React.FC<Props> = ({
 
       // Validate word in real-time
       if (newSelectedLetters.length >= GAME_CONFIG.MIN_WORD_LENGTH) {
-        const validation = validateWord(newSelectedLetters);
+        const validation = validateWord(newSelectedLetters, level.id);
         setIsValidWord(validation.isValid);
       } else {
         setIsValidWord(undefined);
@@ -210,7 +210,7 @@ export const GameScreen: React.FC<Props> = ({
   }, []);
 
   const handleSubmitWord = useCallback(() => {
-    const validation = validateWord(gameState.selectedLetters);
+    const validation = validateWord(gameState.selectedLetters, level.id);
 
     if (validation.isValid) {
       // Check if word was already found
@@ -286,7 +286,7 @@ export const GameScreen: React.FC<Props> = ({
     }
 
     const hint = getHintWord(
-      letters,
+      level.id,
       gameState.foundWords.map(w => w.word),
     );
 
@@ -296,7 +296,7 @@ export const GameScreen: React.FC<Props> = ({
     } else {
       Alert.alert('No Hints', 'No more words available!');
     }
-  }, [letters, gameState.foundWords, gameState.hints]);
+  }, [level.id, gameState.foundWords, gameState.hints]);
 
   const handleLevelComplete = () => {
     const stars = calculateStars(gameState.score, level.targetScore);
