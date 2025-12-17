@@ -63,93 +63,44 @@ export function generateRandomLetter(): string {
 }
 
 /**
- * Validates if a letter grid has enough words and achievable target score
+ * Fast heuristic validation of letter grid quality
+ * Uses simple letter frequency checks instead of expensive word finding
  */
 function validateLetterGrid(
   letters: Letter[],
   targetScore: number,
   difficulty: 'easy' | 'medium' | 'hard' | 'expert',
-): {isValid: boolean; wordCount: number; maxScore: number; words: string[]} {
-  // Find all possible words in the grid
-  const possibleWords = findPossibleWords(letters);
+): {isValid: boolean; vowelCount: number; commonLetters: number} {
+  // Count vowels (good indicator of word-forming potential)
+  const vowels = ['A', 'E', 'I', 'O', 'U'];
+  const vowelCount = letters.filter(l => vowels.includes(l.letter)).length;
 
-  // Calculate score for each word and sort by score (descending)
-  const wordScores: {word: string; score: number}[] = [];
-  for (const word of possibleWords) {
-    const wordLetters = word.split('');
-    const wordScore = calculateMaxScoreForWord(letters, wordLetters);
-    wordScores.push({word, score: wordScore});
-  }
-  wordScores.sort((a, b) => b.score - a.score);
+  // Count common consonants that form words easily
+  const commonConsonants = ['R', 'S', 'T', 'N', 'L'];
+  const commonLetters = letters.filter(l =>
+    commonConsonants.includes(l.letter),
+  ).length;
 
-  // Calculate realistic max score: sum of top-scoring words
-  // Players won't find ALL words, so we estimate based on top 60% of words
-  const topWordCount = Math.ceil(possibleWords.length * 0.6);
-  const maxScore = wordScores
-    .slice(0, topWordCount)
-    .reduce((sum, ws) => sum + ws.score, 0);
-
-  // Minimum word count requirements based on difficulty
-  const minWordCount = {
-    easy: 20,    // Easy levels should have plenty of words
-    medium: 15,  // Medium levels need good variety
-    hard: 12,    // Hard levels can be tighter
-    expert: 10,  // Expert levels allow fewer words
+  // Required vowel counts based on difficulty
+  const minVowels = {
+    easy: 10,   // 40% of 25
+    medium: 8,  // 32% of 25
+    hard: 7,    // 28% of 25
+    expert: 6,  // 24% of 25
   }[difficulty];
 
-  // Validation: enough words AND realistic max score exceeds target with buffer
-  const isValid =
-    possibleWords.length >= minWordCount &&
-    maxScore >= targetScore * 1.3; // 30% buffer for achievability
+  // Should have at least some common consonants (3-5)
+  const hasGoodConsonants = commonLetters >= 3;
+
+  const isValid = vowelCount >= minVowels && hasGoodConsonants;
 
   return {
     isValid,
-    wordCount: possibleWords.length,
-    maxScore,
-    words: possibleWords,
+    vowelCount,
+    commonLetters,
   };
 }
 
-/**
- * Calculates maximum score for a specific word considering multipliers
- */
-function calculateMaxScoreForWord(
-  letters: Letter[],
-  wordLetters: string[],
-): number {
-  // Find all possible paths that form this word
-  let maxScore = 0;
-
-  function findPaths(
-    current: Letter[],
-    remaining: string[],
-    unusedLetters: Letter[],
-  ): void {
-    if (remaining.length === 0) {
-      const score = calculateScore(current);
-      maxScore = Math.max(maxScore, score);
-      return;
-    }
-
-    const nextLetter = remaining[0];
-    for (const letter of unusedLetters) {
-      if (
-        letter.letter === nextLetter &&
-        (current.length === 0 ||
-          areLettersAdjacent(current[current.length - 1], letter))
-      ) {
-        findPaths(
-          [...current, letter],
-          remaining.slice(1),
-          unusedLetters.filter(l => l.id !== letter.id),
-        );
-      }
-    }
-  }
-
-  findPaths([], wordLetters, letters);
-  return maxScore;
-}
 
 /**
  * Generates a grid of letters for a level (internal - not validated)
@@ -229,21 +180,21 @@ export function generateLetterGrid(
 
     if (validation.isValid) {
       console.log(
-        `✅ Generated valid grid on attempt ${attempts}: ${validation.wordCount} words, max score: ${validation.maxScore}`,
+        `✅ Generated valid grid on attempt ${attempts}: ${validation.vowelCount} vowels, ${validation.commonLetters} common consonants`,
       );
       return letters;
     }
 
     if (attempts % 10 === 0) {
       console.log(
-        `⚠️  Attempt ${attempts}: ${validation.wordCount} words (need ${
-          {easy: 20, medium: 15, hard: 12, expert: 10}[difficulty]
-        }), max score: ${validation.maxScore} (need ${Math.floor(estimatedTarget * 1.2)})`,
+        `⚠️  Attempt ${attempts}: ${validation.vowelCount} vowels (need ${
+          {easy: 10, medium: 8, hard: 7, expert: 6}[difficulty]
+        }), ${validation.commonLetters} common consonants`,
       );
     }
   }
 
-  // Fallback: return best attempt (shouldn't happen often)
+  // Fallback: return best attempt (shouldn't happen often with fast validation)
   console.warn(
     `⚠️  Could not generate valid grid after ${maxAttempts} attempts, returning best effort`,
   );
