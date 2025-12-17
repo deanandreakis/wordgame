@@ -50,7 +50,7 @@ export const GameScreen: React.FC<Props> = ({
   });
 
   const [letters, setLetters] = useState<Letter[]>(() =>
-    generateLetterGrid(GAME_CONFIG.GRID_SIZE, level.difficulty),
+    generateLetterGrid(GAME_CONFIG.GRID_SIZE, level.difficulty, level.targetScore),
   );
 
   const [particles, setParticles] = useState<

@@ -63,9 +63,98 @@ export function generateRandomLetter(): string {
 }
 
 /**
- * Generates a grid of letters for a level
+ * Validates if a letter grid has enough words and achievable target score
  */
-export function generateLetterGrid(
+function validateLetterGrid(
+  letters: Letter[],
+  targetScore: number,
+  difficulty: 'easy' | 'medium' | 'hard' | 'expert',
+): {isValid: boolean; wordCount: number; maxScore: number; words: string[]} {
+  // Find all possible words in the grid
+  const possibleWords = findPossibleWords(letters);
+
+  // Calculate score for each word and sort by score (descending)
+  const wordScores: {word: string; score: number}[] = [];
+  for (const word of possibleWords) {
+    const wordLetters = word.split('');
+    const wordScore = calculateMaxScoreForWord(letters, wordLetters);
+    wordScores.push({word, score: wordScore});
+  }
+  wordScores.sort((a, b) => b.score - a.score);
+
+  // Calculate realistic max score: sum of top-scoring words
+  // Players won't find ALL words, so we estimate based on top 60% of words
+  const topWordCount = Math.ceil(possibleWords.length * 0.6);
+  const maxScore = wordScores
+    .slice(0, topWordCount)
+    .reduce((sum, ws) => sum + ws.score, 0);
+
+  // Minimum word count requirements based on difficulty
+  const minWordCount = {
+    easy: 20,    // Easy levels should have plenty of words
+    medium: 15,  // Medium levels need good variety
+    hard: 12,    // Hard levels can be tighter
+    expert: 10,  // Expert levels allow fewer words
+  }[difficulty];
+
+  // Validation: enough words AND realistic max score exceeds target with buffer
+  const isValid =
+    possibleWords.length >= minWordCount &&
+    maxScore >= targetScore * 1.3; // 30% buffer for achievability
+
+  return {
+    isValid,
+    wordCount: possibleWords.length,
+    maxScore,
+    words: possibleWords,
+  };
+}
+
+/**
+ * Calculates maximum score for a specific word considering multipliers
+ */
+function calculateMaxScoreForWord(
+  letters: Letter[],
+  wordLetters: string[],
+): number {
+  // Find all possible paths that form this word
+  let maxScore = 0;
+
+  function findPaths(
+    current: Letter[],
+    remaining: string[],
+    unusedLetters: Letter[],
+  ): void {
+    if (remaining.length === 0) {
+      const score = calculateScore(current);
+      maxScore = Math.max(maxScore, score);
+      return;
+    }
+
+    const nextLetter = remaining[0];
+    for (const letter of unusedLetters) {
+      if (
+        letter.letter === nextLetter &&
+        (current.length === 0 ||
+          areLettersAdjacent(current[current.length - 1], letter))
+      ) {
+        findPaths(
+          [...current, letter],
+          remaining.slice(1),
+          unusedLetters.filter(l => l.id !== letter.id),
+        );
+      }
+    }
+  }
+
+  findPaths([], wordLetters, letters);
+  return maxScore;
+}
+
+/**
+ * Generates a grid of letters for a level (internal - not validated)
+ */
+function generateLetterGridInternal(
   size: number = GAME_CONFIG.GRID_SIZE,
   difficulty: 'easy' | 'medium' | 'hard' | 'expert' = 'medium',
 ): Letter[] {
@@ -114,16 +203,63 @@ export function generateLetterGrid(
 }
 
 /**
- * Generates a complete level configuration
+ * Generates a VALIDATED grid of letters for a level
+ * Guarantees the grid has enough words and achievable target score
+ */
+export function generateLetterGrid(
+  size: number = GAME_CONFIG.GRID_SIZE,
+  difficulty: 'easy' | 'medium' | 'hard' | 'expert' = 'medium',
+  targetScore?: number,
+): Letter[] {
+  const maxAttempts = 50; // Prevent infinite loops
+  let attempts = 0;
+
+  // If no target score provided, estimate based on difficulty
+  const estimatedTarget = targetScore || 500 * {
+    easy: 1,
+    medium: 1.5,
+    hard: 2,
+    expert: 2.5,
+  }[difficulty];
+
+  while (attempts < maxAttempts) {
+    attempts++;
+    const letters = generateLetterGridInternal(size, difficulty);
+    const validation = validateLetterGrid(letters, estimatedTarget, difficulty);
+
+    if (validation.isValid) {
+      console.log(
+        `✅ Generated valid grid on attempt ${attempts}: ${validation.wordCount} words, max score: ${validation.maxScore}`,
+      );
+      return letters;
+    }
+
+    if (attempts % 10 === 0) {
+      console.log(
+        `⚠️  Attempt ${attempts}: ${validation.wordCount} words (need ${
+          {easy: 20, medium: 15, hard: 12, expert: 10}[difficulty]
+        }), max score: ${validation.maxScore} (need ${Math.floor(estimatedTarget * 1.2)})`,
+      );
+    }
+  }
+
+  // Fallback: return best attempt (shouldn't happen often)
+  console.warn(
+    `⚠️  Could not generate valid grid after ${maxAttempts} attempts, returning best effort`,
+  );
+  return generateLetterGridInternal(size, difficulty);
+}
+
+/**
+ * Generates a complete level configuration with guaranteed solvability
  */
 export function generateLevel(
   levelNumber: number,
   isPremium: boolean = false,
 ): Level {
   const difficulty = getLevelDifficulty(levelNumber);
-  const letters = generateLetterGrid(GAME_CONFIG.GRID_SIZE, difficulty);
 
-  // Calculate target score based on difficulty
+  // Calculate target score based on difficulty FIRST
   const baseTargetScore = 500;
   const difficultyMultiplier = {
     easy: 1,
@@ -135,6 +271,9 @@ export function generateLevel(
   const targetScore = Math.floor(
     baseTargetScore * difficultyMultiplier * (1 + levelNumber * 0.1),
   );
+
+  // Generate validated grid that can achieve this target score
+  const letters = generateLetterGrid(GAME_CONFIG.GRID_SIZE, difficulty, targetScore);
 
   // Add time limit for higher levels
   const timeLimit = levelNumber > 10 ? 180 - levelNumber * 2 : undefined;
