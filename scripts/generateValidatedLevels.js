@@ -177,6 +177,37 @@ function findPossibleWords(letters, minWords) {
   return Array.from(possibleWords);
 }
 
+// Generate multiplier positions for a level (consistent per level)
+function generateMultipliers(difficulty) {
+  const multipliers = [];
+
+  // Number of multiplier tiles by difficulty
+  const multiplierCounts = {
+    easy: 4,    // 4 multiplier tiles (easier to get high scores)
+    medium: 3,  // 3 multiplier tiles
+    hard: 3,    // 3 multiplier tiles
+    expert: 2,  // 2 multiplier tiles (harder to score)
+  };
+
+  const count = multiplierCounts[difficulty];
+  const positions = new Set();
+
+  // Randomly select positions (but deterministic per level due to seeding)
+  while (positions.size < count) {
+    const pos = Math.floor(Math.random() * 25);
+    positions.add(pos);
+  }
+
+  // Convert to array and assign 2x or 3x values
+  Array.from(positions).forEach((position, index) => {
+    // First multiplier is 3x, rest are 2x (70/30 split like original)
+    const value = index === 0 && Math.random() < 0.3 ? 3 : 2;
+    multipliers.push({ position, value });
+  });
+
+  return multipliers;
+}
+
 function generateValidatedLevel(levelNumber, difficulty, isPremium, targetScore, timeLimit) {
   const minWords = { easy: 20, medium: 15, hard: 12, expert: 10 }[difficulty];
   let attempts = 0;
@@ -188,9 +219,13 @@ function generateValidatedLevel(levelNumber, difficulty, isPremium, targetScore,
     const words = findPossibleWords(letters, minWords);
 
     if (words.length >= minWords) {
+      // Generate consistent multiplier positions (2x and 3x point tiles)
+      const multiplierPositions = generateMultipliers(difficulty);
+
       console.log(`✅ Level ${levelNumber} (${difficulty}): ${words.length} words found on attempt ${attempts}`);
       console.log(`   Sample words: ${words.slice(0, 5).join(', ')}`);
-      return { id: levelNumber, difficulty, letters, targetScore, timeLimit, isPremium, validWords: words };
+      console.log(`   Multipliers: ${multiplierPositions.length} tiles (${multiplierPositions.filter(m => m.value === 2).length}x 2×, ${multiplierPositions.filter(m => m.value === 3).length}x 3×)`);
+      return { id: levelNumber, difficulty, letters, targetScore, timeLimit, isPremium, validWords: words, multiplierPositions };
     }
 
     if (attempts % 10 === 0) {
@@ -250,9 +285,15 @@ const tsContent = `/**
  * Pre-calculated validated levels for LetterLoom
  * All levels have their valid word lists pre-calculated at compile time
  * Runtime validation checks against level.validWords instead of global dictionary
+ * Multiplier positions are also pre-calculated for consistency
  *
  * Generated: ${new Date().toISOString()}
  */
+
+export interface MultiplierPosition {
+  position: number; // Index in the 25-tile grid (0-24)
+  value: 2 | 3;     // Multiplier value (2x or 3x)
+}
 
 export interface LevelData {
   id: number;
@@ -262,6 +303,7 @@ export interface LevelData {
   timeLimit?: number;
   isPremium: boolean;
   validWords: string[]; // All valid words for this specific grid
+  multiplierPositions: MultiplierPosition[]; // Pre-calculated multiplier tile positions
 }
 
 export const LEVELS: LevelData[] = [
@@ -272,6 +314,7 @@ ${levels.map(level => `  {
     targetScore: ${level.targetScore},${level.timeLimit ? `\n    timeLimit: ${level.timeLimit},` : ''}
     isPremium: ${level.isPremium},
     validWords: ${JSON.stringify(level.validWords)},
+    multiplierPositions: ${JSON.stringify(level.multiplierPositions)},
   }`).join(',\n')}
 ];
 `;

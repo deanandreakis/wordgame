@@ -12,6 +12,11 @@ export interface Word {
   letters: Letter[];
 }
 
+export interface MultiplierPosition {
+  position: number; // Index in the 25-tile grid (0-24)
+  value: 2 | 3;     // Multiplier value (2x or 3x)
+}
+
 export interface Level {
   id: number;
   targetScore: number;
@@ -19,7 +24,9 @@ export interface Level {
   letters: string[];
   difficulty: 'easy' | 'medium' | 'hard' | 'expert';
   isPremium: boolean;
-  bonusWords?: string[]; // Special words for extra points
+  validWords?: string[]; // Pre-calculated valid words for this level
+  multiplierPositions?: MultiplierPosition[]; // Pre-calculated multiplier positions
+  bonusWords?: string[]; // Special words for extra points (legacy)
 }
 
 export interface GameState {

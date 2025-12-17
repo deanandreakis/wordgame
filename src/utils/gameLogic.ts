@@ -73,15 +73,20 @@ export function generateRandomLetter(): string {
 
 /**
  * Converts a pre-calculated level's letter array into Letter objects with positions
+ * Uses pre-calculated multiplier positions from level data for consistency
  */
-export function createLetterGrid(letters: string[], size: number = GAME_CONFIG.GRID_SIZE): Letter[] {
+export function createLetterGrid(
+  letters: string[],
+  multiplierPositions: Array<{position: number; value: 2 | 3}> = [],
+  size: number = GAME_CONFIG.GRID_SIZE,
+): Letter[] {
   return letters.map((letter, index) => {
     const row = Math.floor(index / size);
     const col = index % size;
 
-    // Occasionally add multiplier tiles (10% chance)
-    const hasMultiplier = Math.random() < 0.1;
-    const multiplier = hasMultiplier ? (Math.random() < 0.7 ? 2 : 3) : undefined;
+    // Use pre-calculated multiplier positions instead of random generation
+    const multiplierData = multiplierPositions.find(m => m.position === index);
+    const multiplier = multiplierData?.value;
 
     return {
       id: `${index}`,
