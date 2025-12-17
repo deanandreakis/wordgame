@@ -142,6 +142,7 @@ function areLettersAdjacent(pos1, pos2) {
 }
 
 // Find ALL valid words in the grid (saved with level at compile time)
+// NO early termination - searches exhaustively to find every possible word
 function findPossibleWords(letters, minWords) {
   const letterObjs = letters.map((letter, i) => ({
     letter,
@@ -150,14 +151,8 @@ function findPossibleWords(letters, minWords) {
   }));
 
   const possibleWords = new Set();
-  const targetWords = minWords * 1.5; // Early termination when we have 1.5x minimum
 
   function generateCombinations(current, remaining) {
-    // Early termination if we found enough words
-    if (possibleWords.size >= targetWords) {
-      return;
-    }
-
     if (current.length >= 3) {
       const word = current.map(l => l.letter).join('');
       if (isValidWord(word)) {
@@ -165,15 +160,10 @@ function findPossibleWords(letters, minWords) {
       }
     }
 
-    // Max depth 8
+    // Max depth 8 (keeps search manageable)
     if (current.length >= 8) return;
 
     for (let i = 0; i < remaining.length; i++) {
-      // Early exit if we have enough words
-      if (possibleWords.size >= targetWords) {
-        return;
-      }
-
       if (current.length === 0 || areLettersAdjacent(current[current.length - 1].position, remaining[i].position)) {
         generateCombinations(
           [...current, remaining[i]],
