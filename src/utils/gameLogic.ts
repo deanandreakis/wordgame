@@ -1,6 +1,7 @@
 import {GAME_CONFIG, LETTER_SCORES, LETTER_FREQUENCIES} from '@/config/constants';
 import {isValidWord} from './dictionary';
 import {Letter, Level, Word} from '@/types/game';
+import {LEVELS} from '@/data/levels';
 
 /**
  * Validates if the selected letters form a valid word
@@ -63,179 +64,60 @@ export function generateRandomLetter(): string {
 }
 
 /**
- * Fast heuristic validation of letter grid quality
- * Uses simple letter frequency checks instead of expensive word finding
+ * Converts a pre-calculated level's letter array into Letter objects with positions
  */
-function validateLetterGrid(
-  letters: Letter[],
-  targetScore: number,
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert',
-): {isValid: boolean; vowelCount: number; commonLetters: number} {
-  // Count vowels (good indicator of word-forming potential)
-  const vowels = ['A', 'E', 'I', 'O', 'U'];
-  const vowelCount = letters.filter(l => vowels.includes(l.letter)).length;
+export function createLetterGrid(letters: string[], size: number = GAME_CONFIG.GRID_SIZE): Letter[] {
+  return letters.map((letter, index) => {
+    const row = Math.floor(index / size);
+    const col = index % size;
 
-  // Count common consonants that form words easily
-  const commonConsonants = ['R', 'S', 'T', 'N', 'L'];
-  const commonLetters = letters.filter(l =>
-    commonConsonants.includes(l.letter),
-  ).length;
-
-  // Required vowel counts based on difficulty
-  const minVowels = {
-    easy: 10,   // 40% of 25
-    medium: 8,  // 32% of 25
-    hard: 7,    // 28% of 25
-    expert: 6,  // 24% of 25
-  }[difficulty];
-
-  // Should have at least some common consonants (3-5)
-  const hasGoodConsonants = commonLetters >= 3;
-
-  const isValid = vowelCount >= minVowels && hasGoodConsonants;
-
-  return {
-    isValid,
-    vowelCount,
-    commonLetters,
-  };
-}
-
-
-/**
- * Generates a grid of letters for a level (internal - not validated)
- */
-function generateLetterGridInternal(
-  size: number = GAME_CONFIG.GRID_SIZE,
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert' = 'medium',
-): Letter[] {
-  const letters: Letter[] = [];
-  const totalLetters = size * size;
-
-  // Adjust vowel ratio based on difficulty
-  const vowelRatio = {
-    easy: 0.5,
-    medium: 0.4,
-    hard: 0.35,
-    expert: 0.3,
-  }[difficulty];
-
-  const vowels = ['A', 'E', 'I', 'O', 'U'];
-  const vowelCount = Math.floor(totalLetters * vowelRatio);
-
-  // Generate letters
-  for (let i = 0; i < totalLetters; i++) {
-    const row = Math.floor(i / size);
-    const col = i % size;
-
-    let letter: string;
-    if (i < vowelCount) {
-      // Add vowels for easier word formation
-      letter = vowels[Math.floor(Math.random() * vowels.length)];
-    } else {
-      letter = generateRandomLetter();
-    }
-
-    // Occasionally add multiplier tiles
-    const hasMultiplier = Math.random() < 0.1; // 10% chance
+    // Occasionally add multiplier tiles (10% chance)
+    const hasMultiplier = Math.random() < 0.1;
     const multiplier = hasMultiplier ? (Math.random() < 0.7 ? 2 : 3) : undefined;
 
-    letters.push({
-      id: `${i}`,
+    return {
+      id: `${index}`,
       letter,
       position: {x: col, y: row},
       isSelected: false,
       multiplier,
-    });
-  }
-
-  // Shuffle to distribute vowels
-  return shuffleArray(letters);
+    };
+  });
 }
 
 /**
- * Generates a VALIDATED grid of letters for a level
- * Guarantees the grid has enough words and achievable target score
- */
-export function generateLetterGrid(
-  size: number = GAME_CONFIG.GRID_SIZE,
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert' = 'medium',
-  targetScore?: number,
-): Letter[] {
-  const maxAttempts = 50; // Prevent infinite loops
-  let attempts = 0;
-
-  // If no target score provided, estimate based on difficulty
-  const estimatedTarget = targetScore || 500 * {
-    easy: 1,
-    medium: 1.5,
-    hard: 2,
-    expert: 2.5,
-  }[difficulty];
-
-  while (attempts < maxAttempts) {
-    attempts++;
-    const letters = generateLetterGridInternal(size, difficulty);
-    const validation = validateLetterGrid(letters, estimatedTarget, difficulty);
-
-    if (validation.isValid) {
-      console.log(
-        `✅ Generated valid grid on attempt ${attempts}: ${validation.vowelCount} vowels, ${validation.commonLetters} common consonants`,
-      );
-      return letters;
-    }
-
-    if (attempts % 10 === 0) {
-      console.log(
-        `⚠️  Attempt ${attempts}: ${validation.vowelCount} vowels (need ${
-          {easy: 10, medium: 8, hard: 7, expert: 6}[difficulty]
-        }), ${validation.commonLetters} common consonants`,
-      );
-    }
-  }
-
-  // Fallback: return best attempt (shouldn't happen often with fast validation)
-  console.warn(
-    `⚠️  Could not generate valid grid after ${maxAttempts} attempts, returning best effort`,
-  );
-  return generateLetterGridInternal(size, difficulty);
-}
-
-/**
- * Generates a complete level configuration with guaranteed solvability
+ * Loads a pre-calculated level by level number
+ * All levels are pre-designed and tested for quality
  */
 export function generateLevel(
   levelNumber: number,
   isPremium: boolean = false,
 ): Level {
-  const difficulty = getLevelDifficulty(levelNumber);
+  // Find the pre-calculated level data
+  const levelData = LEVELS.find(l => l.id === levelNumber);
 
-  // Calculate target score based on difficulty FIRST
-  const baseTargetScore = 500;
-  const difficultyMultiplier = {
-    easy: 1,
-    medium: 1.5,
-    hard: 2,
-    expert: 2.5,
-  }[difficulty];
+  if (!levelData) {
+    // Fallback: if level doesn't exist, return level 1
+    console.warn(`Level ${levelNumber} not found, falling back to level 1`);
+    const fallbackData = LEVELS[0];
+    return {
+      id: levelNumber,
+      targetScore: fallbackData.targetScore,
+      timeLimit: fallbackData.timeLimit,
+      letters: fallbackData.letters,
+      difficulty: fallbackData.difficulty,
+      isPremium,
+    };
+  }
 
-  const targetScore = Math.floor(
-    baseTargetScore * difficultyMultiplier * (1 + levelNumber * 0.1),
-  );
-
-  // Generate validated grid that can achieve this target score
-  const letters = generateLetterGrid(GAME_CONFIG.GRID_SIZE, difficulty, targetScore);
-
-  // Add time limit for higher levels
-  const timeLimit = levelNumber > 10 ? 180 - levelNumber * 2 : undefined;
-
+  // Return the pre-calculated level
   return {
-    id: levelNumber,
-    targetScore,
-    timeLimit,
-    letters: letters.map(l => l.letter),
-    difficulty,
-    isPremium,
+    id: levelData.id,
+    targetScore: levelData.targetScore,
+    timeLimit: levelData.timeLimit,
+    letters: levelData.letters,
+    difficulty: levelData.difficulty,
+    isPremium: levelData.isPremium,
   };
 }
 

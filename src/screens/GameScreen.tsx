@@ -19,7 +19,7 @@ import {GAME_CONFIG, ANIMATIONS} from '@/config/constants';
 import {Letter, GameState, Level, Word} from '@/types/game';
 import {
   validateWord,
-  generateLetterGrid,
+  createLetterGrid,
   isValidLetterPath,
   calculateStars,
   getHintWord,
@@ -50,7 +50,7 @@ export const GameScreen: React.FC<Props> = ({
   });
 
   const [letters, setLetters] = useState<Letter[]>(() =>
-    generateLetterGrid(GAME_CONFIG.GRID_SIZE, level.difficulty, level.targetScore),
+    createLetterGrid(level.letters, GAME_CONFIG.GRID_SIZE),
   );
 
   const [particles, setParticles] = useState<
