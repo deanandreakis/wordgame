@@ -18,7 +18,7 @@ import {
   saveUserProfile,
   getPurchasedLevels,
 } from './utils/storage';
-import {IAP_PRODUCTS, COIN_REWARDS} from './config/constants';
+import {IAP_PRODUCTS, COIN_REWARDS, GAME_CONFIG} from './config/constants';
 import type {CustomerInfo} from 'react-native-purchases';
 
 type Screen = 'menu' | 'levelSelect' | 'game' | 'leaderboard' | 'shop' | 'help';
