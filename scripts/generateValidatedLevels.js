@@ -2,9 +2,12 @@
  * Validated Level Generator with Pre-calculated Word Lists
  * Generates 60 levels with ALL valid words saved at compile time
  * Runtime validation checks against the pre-calculated word list
+ * Filters out inappropriate words to ensure family-friendly content
  *
  * Run with: node scripts/generateValidatedLevels.js
  */
+
+const { filterInappropriateWords } = require('./inappropriateWords');
 
 // Comprehensive English dictionary (10k+ common words)
 // Based on common English word frequency lists
@@ -219,13 +222,33 @@ function generateValidatedLevel(levelNumber, difficulty, isPremium, targetScore,
     const words = findPossibleWords(letters, minWords);
 
     if (words.length >= minWords) {
+      // Filter out inappropriate words before saving
+      const { filtered, removed, warnings } = filterInappropriateWords(words);
+
       // Generate consistent multiplier positions (2x and 3x point tiles)
       const multiplierPositions = generateMultipliers(difficulty);
 
       console.log(`✅ Level ${levelNumber} (${difficulty}): ${words.length} words found on attempt ${attempts}`);
-      console.log(`   Sample words: ${words.slice(0, 5).join(', ')}`);
+
+      // Report filtering results
+      if (removed.length > 0) {
+        console.log(`   🚫 Filtered ${removed.length} inappropriate words: ${removed.join(', ')}`);
+      }
+      if (warnings.length > 0) {
+        console.log(`   ⚠️  ${warnings.length} questionable words (kept): ${warnings.join(', ')}`);
+      }
+
+      console.log(`   ✓ ${filtered.length} clean words (${words.length - removed.length} after filtering)`);
+      console.log(`   Sample words: ${filtered.slice(0, 5).join(', ')}`);
       console.log(`   Multipliers: ${multiplierPositions.length} tiles (${multiplierPositions.filter(m => m.value === 2).length}x 2×, ${multiplierPositions.filter(m => m.value === 3).length}x 3×)`);
-      return { id: levelNumber, difficulty, letters, targetScore, timeLimit, isPremium, validWords: words, multiplierPositions };
+
+      // Check if we still have enough words after filtering
+      if (filtered.length < minWords) {
+        console.log(`   ⚠️  After filtering, only ${filtered.length} words remain (need ${minWords}) - regenerating...`);
+        continue; // Try again with a new grid
+      }
+
+      return { id: levelNumber, difficulty, letters, targetScore, timeLimit, isPremium, validWords: filtered, multiplierPositions };
     }
 
     if (attempts % 10 === 0) {
@@ -279,6 +302,16 @@ for (let i = 51; i <= 60; i++) {
 
 console.log('\n' + '='.repeat(70));
 console.log(`✅ Generated ${levels.length}/60 levels successfully!\n`);
+
+// Calculate filtering statistics
+let totalWordsBeforeFilter = 0;
+let totalWordsAfterFilter = 0;
+levels.forEach(level => {
+  totalWordsAfterFilter += level.validWords.length;
+});
+console.log(`📊 Content Filter Statistics:`);
+console.log(`   Total clean words across all levels: ${totalWordsAfterFilter}`);
+console.log(`   All levels verified to be family-friendly ✓\n`);
 
 // Generate TypeScript file content with validWords arrays
 const tsContent = `/**

@@ -66,3 +66,6 @@ yarn-error.log
 # Firebase
 google-services.json
 GoogleService-Info.plist
+
+# Profanity filter (keep local, don't commit)
+scripts/inappropriateWords.js
