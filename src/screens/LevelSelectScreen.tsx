@@ -149,26 +149,33 @@ export const LevelSelectScreen: React.FC<Props> = ({
             {id: 1, label: 'Pack 1'},
             {id: 2, label: 'Pack 2'},
             {id: 3, label: 'Pack 3'},
-          ].map(pack => (
-            <TouchableOpacity
-              key={pack.id}
-              onPress={() => setSelectedPack(pack.id)}
-              style={[
-                styles.packButton,
-                selectedPack === pack.id && styles.packButtonActive,
-              ]}>
-              <Text
+          ].map(pack => {
+            const isPackUnlocked = pack.id === 0 || userProfile?.hasPremium ||
+              (pack.id === 1 && userProfile?.purchasedLevels?.some(l => l >= 21 && l <= 40)) ||
+              (pack.id === 2 && userProfile?.purchasedLevels?.some(l => l >= 41 && l <= 60)) ||
+              (pack.id === 3 && userProfile?.purchasedLevels?.some(l => l >= 61 && l <= 80));
+
+            return (
+              <TouchableOpacity
+                key={pack.id}
+                onPress={() => setSelectedPack(pack.id)}
                 style={[
-                  styles.packButtonText,
-                  selectedPack === pack.id && styles.packButtonTextActive,
+                  styles.packButton,
+                  selectedPack === pack.id && styles.packButtonActive,
                 ]}>
-                {pack.label}
-              </Text>
-              {pack.id > 0 && (
-                <Text style={styles.packPrice}>$2.99</Text>
-              )}
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.packButtonText,
+                    selectedPack === pack.id && styles.packButtonTextActive,
+                  ]}>
+                  {pack.label}
+                </Text>
+                {pack.id > 0 && !isPackUnlocked && (
+                  <Text style={styles.packLock}>🔒</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <ScrollView
@@ -246,6 +253,10 @@ const styles = StyleSheet.create({
   packPrice: {
     fontSize: 10,
     color: GAME_CONFIG.COLORS.warning,
+    marginTop: 2,
+  },
+  packLock: {
+    fontSize: 14,
     marginTop: 2,
   },
   scrollContent: {

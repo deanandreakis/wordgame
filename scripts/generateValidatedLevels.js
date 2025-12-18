@@ -203,34 +203,54 @@ function generateValidatedLevel(levelNumber, difficulty, isPremium, targetScore,
 function generateAllLevels() {
   loadDictionary();
 
-  console.log('🔧 Generating 60 validated levels with american-english dictionary...\n');
+  console.log('🔧 Generating 80 validated levels with american-english dictionary...\n');
+  console.log('Level Distribution:\n');
+  console.log('  FREE PACK (1-20): 10 Easy + 10 Medium');
+  console.log('  PACK 1 (21-40): 10 Medium + 10 Hard');
+  console.log('  PACK 2 (41-60): 10 Hard + 10 Expert');
+  console.log('  PACK 3 (61-80): 20 Expert\n');
 
   const levelConfigs = [];
 
-  // Easy levels (1-10)
+  // FREE PACK: Easy levels (1-10)
   for (let i = 1; i <= 10; i++) {
     levelConfigs.push({ id: i, difficulty: 'easy', isPremium: false, targetScore: 550 + (i - 1) * 50, timeLimit: undefined });
   }
 
-  // Medium levels (11-30)
-  for (let i = 11; i <= 30; i++) {
-    levelConfigs.push({ id: i, difficulty: 'medium', isPremium: i > 20, targetScore: 700 + (i - 11) * 30, timeLimit: undefined });
+  // FREE PACK: Medium levels (11-20)
+  for (let i = 11; i <= 20; i++) {
+    levelConfigs.push({ id: i, difficulty: 'medium', isPremium: false, targetScore: 600 + (i - 11) * 50, timeLimit: undefined });
   }
 
-  // Hard levels (31-50)
-  for (let i = 31; i <= 50; i++) {
-    levelConfigs.push({ id: i, difficulty: 'hard', isPremium: i > 40, targetScore: 900 + (i - 31) * 40, timeLimit: undefined });
+  // PACK 1: Medium levels (21-30)
+  for (let i = 21; i <= 30; i++) {
+    levelConfigs.push({ id: i, difficulty: 'medium', isPremium: true, targetScore: 700 + (i - 21) * 30, timeLimit: undefined });
   }
 
-  // Expert levels (51-60)
+  // PACK 1: Hard levels (31-40)
+  for (let i = 31; i <= 40; i++) {
+    levelConfigs.push({ id: i, difficulty: 'hard', isPremium: true, targetScore: 850 + (i - 31) * 40, timeLimit: undefined });
+  }
+
+  // PACK 2: Hard levels (41-50)
+  for (let i = 41; i <= 50; i++) {
+    levelConfigs.push({ id: i, difficulty: 'hard', isPremium: true, targetScore: 950 + (i - 41) * 40, timeLimit: undefined });
+  }
+
+  // PACK 2: Expert levels (51-60)
   for (let i = 51; i <= 60; i++) {
-    levelConfigs.push({ id: i, difficulty: 'expert', isPremium: true, targetScore: 1200 + (i - 51) * 50, timeLimit: undefined });
+    levelConfigs.push({ id: i, difficulty: 'expert', isPremium: true, targetScore: 1150 + (i - 51) * 50, timeLimit: undefined });
+  }
+
+  // PACK 3: Expert levels (61-80)
+  for (let i = 61; i <= 80; i++) {
+    levelConfigs.push({ id: i, difficulty: 'expert', isPremium: true, targetScore: 1250 + (i - 61) * 40, timeLimit: undefined });
   }
 
   const levels = [];
   let successCount = 0;
 
-  console.log('📗 Generating EASY levels (1-10)...');
+  console.log('📗 Generating FREE PACK EASY levels (1-10)...');
   for (const config of levelConfigs.slice(0, 10)) {
     const level = generateValidatedLevel(config.id, config.difficulty, config.isPremium, config.targetScore, config.timeLimit);
     if (level) {
@@ -239,8 +259,8 @@ function generateAllLevels() {
     }
   }
 
-  console.log('\n📘 Generating MEDIUM levels (11-30)...');
-  for (const config of levelConfigs.slice(10, 30)) {
+  console.log('\n📘 Generating FREE PACK MEDIUM levels (11-20)...');
+  for (const config of levelConfigs.slice(10, 20)) {
     const level = generateValidatedLevel(config.id, config.difficulty, config.isPremium, config.targetScore, config.timeLimit);
     if (level) {
       levels.push(level);
@@ -248,8 +268,8 @@ function generateAllLevels() {
     }
   }
 
-  console.log('\n📙 Generating HARD levels (31-50)...');
-  for (const config of levelConfigs.slice(30, 50)) {
+  console.log('\n📘 Generating PACK 1 MEDIUM levels (21-30)...');
+  for (const config of levelConfigs.slice(20, 30)) {
     const level = generateValidatedLevel(config.id, config.difficulty, config.isPremium, config.targetScore, config.timeLimit);
     if (level) {
       levels.push(level);
@@ -257,7 +277,25 @@ function generateAllLevels() {
     }
   }
 
-  console.log('\n📕 Generating EXPERT levels (51-60)...');
+  console.log('\n📙 Generating PACK 1 HARD levels (31-40)...');
+  for (const config of levelConfigs.slice(30, 40)) {
+    const level = generateValidatedLevel(config.id, config.difficulty, config.isPremium, config.targetScore, config.timeLimit);
+    if (level) {
+      levels.push(level);
+      successCount++;
+    }
+  }
+
+  console.log('\n📙 Generating PACK 2 HARD levels (41-50)...');
+  for (const config of levelConfigs.slice(40, 50)) {
+    const level = generateValidatedLevel(config.id, config.difficulty, config.isPremium, config.targetScore, config.timeLimit);
+    if (level) {
+      levels.push(level);
+      successCount++;
+    }
+  }
+
+  console.log('\n📕 Generating PACK 2 EXPERT levels (51-60)...');
   for (const config of levelConfigs.slice(50, 60)) {
     const level = generateValidatedLevel(config.id, config.difficulty, config.isPremium, config.targetScore, config.timeLimit);
     if (level) {
@@ -266,8 +304,17 @@ function generateAllLevels() {
     }
   }
 
+  console.log('\n📕 Generating PACK 3 EXPERT levels (61-80)...');
+  for (const config of levelConfigs.slice(60, 80)) {
+    const level = generateValidatedLevel(config.id, config.difficulty, config.isPremium, config.targetScore, config.timeLimit);
+    if (level) {
+      levels.push(level);
+      successCount++;
+    }
+  }
+
   console.log('\n' + '='.repeat(70));
-  console.log(`✅ Generated ${successCount}/60 levels successfully!\n`);
+  console.log(`✅ Generated ${successCount}/80 levels successfully!\n`);
 
   // Calculate statistics
   let totalWords = 0;
@@ -332,9 +379,9 @@ ${levels.map(level => `  {
   console.log(`EASY: 10 levels, ${(diffStats.easy / 10).toFixed(0)} avg words per level`);
   console.log(`MEDIUM: 20 levels, ${(diffStats.medium / 20).toFixed(0)} avg words per level`);
   console.log(`HARD: 20 levels, ${(diffStats.hard / 20).toFixed(0)} avg words per level`);
-  console.log(`EXPERT: 10 levels, ${(diffStats.expert / 10).toFixed(0)} avg words per level`);
+  console.log(`EXPERT: 30 levels, ${(diffStats.expert / 30).toFixed(0)} avg words per level`);
   console.log('\n📚 Words validated against scripts/dictionaries/american-english');
-  console.log('✅ Each level now contains its own pre-calculated valid word list!');
+  console.log('✅ All 80 levels now contain their own pre-calculated valid word lists!');
 }
 
 generateAllLevels();
