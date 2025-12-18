@@ -57,7 +57,7 @@ export const HelpScreen: React.FC<Props> = ({onBack}) => {
               <View style={styles.step}>
                 <Text style={styles.stepNumber}>2</Text>
                 <Text style={styles.stepText}>
-                  Selected letters will light up and appear in the word display at the top.
+                  Selected letters will light up and appear in the word display at the bottom.
                 </Text>
               </View>
               <View style={styles.step}>
