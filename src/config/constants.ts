@@ -13,6 +13,8 @@ export const GAME_CONFIG = {
     8: 4,
   },
   FREE_LEVELS: 20,
+  // Set to true to unlock all levels for testing in Expo Go
+  TESTING_MODE: __DEV__,
   COLORS: {
     // PRIMARY GREENS - Nature/Forest theme
     primary: '#2D5F3F',           // Deep Forest Green (was #6C5CE7 purple)

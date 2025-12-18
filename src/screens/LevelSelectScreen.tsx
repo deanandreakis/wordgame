@@ -45,6 +45,10 @@ export const LevelSelectScreen: React.FC<Props> = ({
   };
 
   const isLevelUnlocked = (levelNumber: number) => {
+    // Testing mode: unlock all levels
+    if (GAME_CONFIG.TESTING_MODE) {
+      return true;
+    }
     // Free levels are always unlocked
     if (levelNumber <= GAME_CONFIG.FREE_LEVELS) {
       return true;
@@ -150,7 +154,7 @@ export const LevelSelectScreen: React.FC<Props> = ({
             {id: 2, label: 'Pack 2'},
             {id: 3, label: 'Pack 3'},
           ].map(pack => {
-            const isPackUnlocked = pack.id === 0 || userProfile?.hasPremium ||
+            const isPackUnlocked = GAME_CONFIG.TESTING_MODE || pack.id === 0 || userProfile?.hasPremium ||
               (pack.id === 1 && userProfile?.purchasedLevels?.some(l => l >= 21 && l <= 40)) ||
               (pack.id === 2 && userProfile?.purchasedLevels?.some(l => l >= 41 && l <= 60)) ||
               (pack.id === 3 && userProfile?.purchasedLevels?.some(l => l >= 61 && l <= 80));
