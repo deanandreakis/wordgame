@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
-import {GAME_CONFIG, IAP_PRODUCTS, COIN_AMOUNTS} from '@/config/constants';
+import {GAME_CONFIG, IAP_PRODUCTS, COIN_AMOUNTS, IAP_PRICING} from '@/config/constants';
 import {IAPService, isPremiumActive} from '@/services/iap';
 import {getUserProfile} from '@/utils/storage';
 import {UserProfile} from '@/types/game';
@@ -87,9 +87,10 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
     );
   };
 
-  const formatPrice = (pkg: PurchasesPackage | undefined): string => {
-    if (!pkg) return '$?.??';
-    return pkg.product.priceString;
+  const formatPrice = (productId: string | undefined, pkg?: PurchasesPackage | undefined): string => {
+    if (!productId) return '$?.??';
+    // Use static pricing from IAP_PRICING config
+    return IAP_PRICING[productId as keyof typeof IAP_PRICING] || (pkg?.product.priceString ?? '$?.??');
   };
 
   const hasPremium = userProfile?.hasPremium ?? false;
@@ -113,6 +114,7 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
   ];
 
   const levelPackages = [
+    {productId: IAP_PRODUCTS.LEVEL_PACK_1, levels: '1-20'},
     {productId: IAP_PRODUCTS.LEVEL_PACK_2, levels: '21-40'},
     {productId: IAP_PRODUCTS.LEVEL_PACK_3, levels: '41-60'},
   ];
@@ -162,7 +164,6 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                 <Text style={styles.premiumBadge}>⭐ PREMIUM</Text>
                 <Text style={styles.premiumTitle}>Premium Unlock</Text>
                 <Text style={styles.premiumDescription}>
-                  • Remove all ads{'\n'}
                   • Double coin rewards from gameplay{'\n'}
                   • Unlock all levels instantly
                 </Text>
@@ -174,7 +175,7 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                   }}
                   disabled={purchasing}>
                   <Text style={styles.premiumButtonText}>
-                    {formatPrice(findPackage(IAP_PRODUCTS.PREMIUM_UNLOCK))}
+                    {formatPrice(IAP_PRODUCTS.PREMIUM_UNLOCK)}
                   </Text>
                 </TouchableOpacity>
               </LinearGradient>
@@ -223,7 +224,7 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                           colors={[GAME_CONFIG.COLORS.primary, GAME_CONFIG.COLORS.secondary]}
                           style={styles.buyButtonGradient}>
                           <Text style={styles.buyButtonText}>
-                            {formatPrice(pkg)}
+                            {formatPrice(item.productId, pkg)}
                           </Text>
                         </LinearGradient>
                       </TouchableOpacity>
@@ -241,7 +242,7 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
               <View style={styles.grid}>
                 {levelPackages.map(item => {
                   const pkg = findPackage(item.productId);
-                  const packNumber = item.productId === IAP_PRODUCTS.LEVEL_PACK_2 ? 2 : 3;
+                  const packNumber = item.productId === IAP_PRODUCTS.LEVEL_PACK_1 ? 1 : item.productId === IAP_PRODUCTS.LEVEL_PACK_2 ? 2 : 3;
                   const isOwned = userProfile?.purchasedLevels?.some(
                     level => level >= (packNumber - 1) * 20 + 1 && level <= packNumber * 20
                   );
@@ -272,7 +273,7 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                             }
                             style={styles.buyButtonGradient}>
                             <Text style={styles.buyButtonText}>
-                              {isOwned ? 'Owned' : formatPrice(pkg)}
+                              {isOwned ? 'Owned' : formatPrice(item.productId, pkg)}
                             </Text>
                           </LinearGradient>
                         </TouchableOpacity>

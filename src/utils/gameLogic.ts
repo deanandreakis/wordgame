@@ -120,6 +120,8 @@ export function generateLevel(
       letters: fallbackData.letters,
       difficulty: fallbackData.difficulty,
       isPremium,
+      validWords: fallbackData.validWords,
+      multiplierPositions: fallbackData.multiplierPositions,
     };
   }
 
@@ -131,6 +133,8 @@ export function generateLevel(
     letters: levelData.letters,
     difficulty: levelData.difficulty,
     isPremium: levelData.isPremium,
+    validWords: levelData.validWords,
+    multiplierPositions: levelData.multiplierPositions,
   };
 }
 

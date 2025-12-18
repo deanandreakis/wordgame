@@ -39,8 +39,8 @@ export const LevelSelectScreen: React.FC<Props> = ({
   };
 
   const getLevelsForPack = (pack: number) => {
-    const start = (pack - 1) * 20 + 1;
-    const end = pack * 20;
+    const start = pack * 20 + 1;
+    const end = (pack + 1) * 20;
     return Array.from({length: 20}, (_, i) => start + i);
   };
 
@@ -93,6 +93,7 @@ export const LevelSelectScreen: React.FC<Props> = ({
 
   const renderLevel = (levelNumber: number) => {
     const isUnlocked = isLevelUnlocked(levelNumber);
+    const isCompleted = userProfile?.completedLevels?.includes(levelNumber) ?? false;
     const level = generateLevel(levelNumber, !isUnlocked);
 
     return (
@@ -112,6 +113,9 @@ export const LevelSelectScreen: React.FC<Props> = ({
             <Text style={[styles.levelNumberText, !isUnlocked && styles.lockedText]}>
               {isUnlocked ? levelNumber : '🔒'}
             </Text>
+            {isCompleted && (
+              <Text style={styles.completionBadge}>✓</Text>
+            )}
           </View>
           <View style={styles.levelInfo}>
             <Text style={[styles.difficultyText, !isUnlocked && styles.lockedText]}>
@@ -140,22 +144,27 @@ export const LevelSelectScreen: React.FC<Props> = ({
         </View>
 
         <View style={styles.packSelector}>
-          {[1, 2, 3, 4, 5].map(pack => (
+          {[
+            {id: 0, label: 'Free'},
+            {id: 1, label: 'Pack 1'},
+            {id: 2, label: 'Pack 2'},
+            {id: 3, label: 'Pack 3'},
+          ].map(pack => (
             <TouchableOpacity
-              key={pack}
-              onPress={() => setSelectedPack(pack)}
+              key={pack.id}
+              onPress={() => setSelectedPack(pack.id)}
               style={[
                 styles.packButton,
-                selectedPack === pack && styles.packButtonActive,
+                selectedPack === pack.id && styles.packButtonActive,
               ]}>
               <Text
                 style={[
                   styles.packButtonText,
-                  selectedPack === pack && styles.packButtonTextActive,
+                  selectedPack === pack.id && styles.packButtonTextActive,
                 ]}>
-                Pack {pack}
+                {pack.label}
               </Text>
-              {pack > 1 && (
+              {pack.id > 0 && (
                 <Text style={styles.packPrice}>$2.99</Text>
               )}
             </TouchableOpacity>
@@ -257,6 +266,7 @@ const styles = StyleSheet.create({
   },
   levelNumber: {
     marginBottom: 8,
+    position: 'relative',
   },
   levelNumberText: {
     fontSize: 32,
@@ -277,5 +287,19 @@ const styles = StyleSheet.create({
   },
   lockedText: {
     opacity: 0.5,
+  },
+  completionBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: GAME_CONFIG.COLORS.success,
+    color: GAME_CONFIG.COLORS.text,
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });

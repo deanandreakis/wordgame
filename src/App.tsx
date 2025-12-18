@@ -142,6 +142,7 @@ const App: React.FC = () => {
           longestStreak: 0,
           achievements: [],
           purchasedLevels: [],
+          completedLevels: [],
           coins: 100, // Starting coins
           hasPremium: false,
           lastPlayedDate: new Date().toISOString(),
@@ -201,10 +202,17 @@ const App: React.FC = () => {
         : 1;
       const coinReward = baseReward * multiplier;
 
+      // Add current level to completedLevels if not already completed
+      const completedLevels = userProfile.completedLevels || [];
+      if (!completedLevels.includes(currentLevel!.id)) {
+        completedLevels.push(currentLevel!.id);
+      }
+
       const updatedProfile: UserProfile = {
         ...userProfile,
         totalScore: userProfile.totalScore + score,
         coins: userProfile.coins + coinReward,
+        completedLevels: completedLevels,
         highestLevel: Math.max(userProfile.highestLevel, currentLevel!.id + 1),
         lastPlayedDate: new Date().toISOString(),
       };

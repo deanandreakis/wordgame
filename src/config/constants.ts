@@ -165,6 +165,17 @@ export const COIN_REWARDS = {
   PREMIUM_MULTIPLIER: 2, // Premium users get 2x coins
 };
 
+// Static pricing for all IAP products
+export const IAP_PRICING = {
+  [IAP_PRODUCTS.LEVEL_PACK_1]: '$2.99',
+  [IAP_PRODUCTS.LEVEL_PACK_2]: '$2.99',
+  [IAP_PRODUCTS.LEVEL_PACK_3]: '$2.99',
+  [IAP_PRODUCTS.COINS_SMALL]: '$0.99',
+  [IAP_PRODUCTS.COINS_MEDIUM]: '$2.99',
+  [IAP_PRODUCTS.COINS_LARGE]: '$7.99',
+  [IAP_PRODUCTS.PREMIUM_UNLOCK]: '$9.99',
+};
+
 export const ANIMATIONS = {
   TILE_SELECT_DURATION: 150,
   TILE_DESELECT_DURATION: 100,

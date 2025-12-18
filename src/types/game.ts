@@ -69,6 +69,7 @@ export interface UserProfile {
   longestStreak: number;
   achievements: Achievement[];
   purchasedLevels: number[];
+  completedLevels: number[]; // Track which levels have been completed
   coins: number;
   hasPremium: boolean;
   lastPlayedDate: string;
