@@ -166,6 +166,34 @@ eas build --platform all --profile production
 4. **Score Points** - Earn points based on letter values and word length
 5. **Reach Target** - Hit the target score to complete the level
 
+### 💾 Level Generation
+
+LetterLoom features **80 pre-calculated, family-friendly levels** with guaranteed valid word lists:
+
+- **80 Total Levels** across 4 packs (Free + 3 Premium)
+- **13,067 Clean Words** with comprehensive profanity filtering
+- **Pre-validated** at build time for instant gameplay
+- **Difficulty progression** from Easy → Expert
+- **Procedural** yet deterministic - reproducible across devices
+
+**Want to learn more?** See [LEVEL_GENERATION.md](./LEVEL_GENERATION.md) for:
+- How levels are generated (compile-time approach)
+- Word validation system
+- Difficulty distribution
+- Content filtering (profanity, questionable words)
+- How to regenerate levels
+
+**To regenerate levels:**
+```bash
+node scripts/generateValidatedLevels.js
+```
+
+**To run in testing mode** (unlock all 80 levels in Expo Go):
+```bash
+npm start
+# All levels automatically available in development builds (__DEV__ = true)
+```
+
 ### Scoring
 
 - **Base Score**: Each letter has a point value (A=1, Z=10)
@@ -190,6 +218,15 @@ eas build --platform all --profile production
 - ⭐ (1 star): Reach target score
 - ⭐⭐ (2 stars): Score 1.5x target
 - ⭐⭐⭐ (3 stars): Score 2x target
+
+---
+
+## 📖 Documentation
+
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Complete system architecture, data flow, screen navigation, and state management
+- **[LEVEL_GENERATION.md](./LEVEL_GENERATION.md)** - How levels are generated, difficulty distribution, word validation, and content filtering
+- **[EAS_SETUP.md](./EAS_SETUP.md)** - Build instructions for iOS and Android using EAS Build
+- **[ASSETS_SUMMARY.md](./ASSETS_SUMMARY.md)** - App assets and icon branding details
 
 ---
 
@@ -219,7 +256,13 @@ letterloom/
 │   │   └── game.ts        # Game type definitions
 │   ├── config/            # Configuration
 │   │   └── constants.ts   # Game constants
+│   ├── data/              # Pre-calculated data
+│   │   └── levels.ts      # 80 auto-generated levels
 │   └── App.tsx            # Root component
+├── scripts/               # Build and generation scripts
+│   ├── generateValidatedLevels.js # Level generation
+│   └── dictionaries/
+│       └── american-english # 48K+ word dictionary
 ├── assets/               # App assets (icons, splash screens)
 │   ├── icon.png         # App icon (1024x1024)
 │   ├── splash.png       # Splash screen (1284x2778)
