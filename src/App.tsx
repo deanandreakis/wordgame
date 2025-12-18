@@ -208,11 +208,15 @@ const App: React.FC = () => {
         completedLevels.push(currentLevel!.id);
       }
 
+      // Calculate which pack this level belongs to (0=Free, 1=Pack1, 2=Pack2, 3=Pack3)
+      const lastPackPlayed = Math.floor((currentLevel!.id - 1) / 20);
+
       const updatedProfile: UserProfile = {
         ...userProfile,
         totalScore: userProfile.totalScore + score,
         coins: userProfile.coins + coinReward,
         completedLevels: completedLevels,
+        lastPackPlayed: lastPackPlayed,
         highestLevel: Math.max(userProfile.highestLevel, currentLevel!.id + 1),
         lastPlayedDate: new Date().toISOString(),
       };

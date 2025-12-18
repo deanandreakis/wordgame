@@ -27,11 +27,20 @@ export const LevelSelectScreen: React.FC<Props> = ({
   userProfile,
 }) => {
   const [purchasedLevels, setPurchasedLevels] = useState<number[]>([]);
-  const [selectedPack, setSelectedPack] = useState(1);
+  const [selectedPack, setSelectedPack] = useState(0);
 
   useEffect(() => {
     loadPurchasedLevels();
   }, []);
+
+  // Set the selected pack to the last pack the player was in, or default to Free (0)
+  useEffect(() => {
+    if (userProfile?.lastPackPlayed !== undefined) {
+      setSelectedPack(userProfile.lastPackPlayed);
+    } else {
+      setSelectedPack(0);
+    }
+  }, [userProfile?.lastPackPlayed]);
 
   const loadPurchasedLevels = async () => {
     const purchased = await getPurchasedLevels();

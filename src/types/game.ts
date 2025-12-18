@@ -70,6 +70,7 @@ export interface UserProfile {
   achievements: Achievement[];
   purchasedLevels: number[];
   completedLevels: number[]; // Track which levels have been completed
+  lastPackPlayed?: number; // Track last pack the player was in (0=Free, 1=Pack1, 2=Pack2, 3=Pack3)
   coins: number;
   hasPremium: boolean;
   lastPlayedDate: string;
