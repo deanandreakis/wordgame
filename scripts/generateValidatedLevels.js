@@ -1,7 +1,7 @@
 /**
  * Validated Level Generator with Pre-calculated Word Lists
  * Generates 60 levels with ALL valid words saved at compile time
- * Uses /usr/share/dict/american-english for word validation
+ * Uses scripts/dictionaries/american-english for word validation
  * Filters out inappropriate words to ensure family-friendly content
  *
  * Run with: node scripts/generateValidatedLevels.js
@@ -16,7 +16,7 @@ let VALID_WORDS = new Set();
 
 function loadDictionary() {
   try {
-    const dictPath = '/usr/share/dict/american-english';
+    const dictPath = path.join(__dirname, 'dictionaries', 'american-english');
     const content = fs.readFileSync(dictPath, 'utf8');
     const words = content
       .split('\n')
@@ -24,10 +24,10 @@ function loadDictionary() {
       .filter(w => w.length >= 3 && w.length <= 8 && /^[a-z]+$/.test(w)); // Only letters, 3-8 chars
 
     VALID_WORDS = new Set(words);
-    console.log(`📚 Loaded ${VALID_WORDS.size} valid words from /usr/share/dict/american-english\n`);
+    console.log(`📚 Loaded ${VALID_WORDS.size} valid words from local dictionary\n`);
     return true;
   } catch (err) {
-    console.error('❌ Could not load dictionary from /usr/share/dict/american-english');
+    console.error('❌ Could not load dictionary from scripts/dictionaries/american-english');
     console.error('Error:', err.message);
     process.exit(1);
   }
@@ -287,7 +287,7 @@ function generateAllLevels() {
   const content = `/**
  * Pre-calculated validated levels for LetterLoom
  * All levels have their valid word lists pre-calculated at compile time
- * Words validated against /usr/share/dict/american-english
+ * Words validated against scripts/dictionaries/american-english
  * Runtime validation checks against level.validWords instead of global dictionary
  * Multiplier positions are also pre-calculated for consistency
  *
@@ -333,7 +333,7 @@ ${levels.map(level => `  {
   console.log(`MEDIUM: 20 levels, ${(diffStats.medium / 20).toFixed(0)} avg words per level`);
   console.log(`HARD: 20 levels, ${(diffStats.hard / 20).toFixed(0)} avg words per level`);
   console.log(`EXPERT: 10 levels, ${(diffStats.expert / 10).toFixed(0)} avg words per level`);
-  console.log('\n📚 Words validated against /usr/share/dict/american-english');
+  console.log('\n📚 Words validated against scripts/dictionaries/american-english');
   console.log('✅ Each level now contains its own pre-calculated valid word list!');
 }
 
