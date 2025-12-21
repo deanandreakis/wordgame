@@ -164,20 +164,23 @@ function generateValidatedLevel(levelNumber, difficulty, isPremium, targetScore,
       // Filter out inappropriate words before saving
       const { filtered, removed, warnings } = filterInappropriateWords(words);
 
+      // CONSTRAINT: Reject grid if ANY inappropriate words can be spelled
+      if (removed.length > 0) {
+        console.log(`   ❌ Grid rejected (attempt ${attempts}): inappropriate words found that can be spelled: ${removed.join(', ')} - regenerating...`);
+        continue; // Reject this entire grid and try a new one
+      }
+
       // Generate consistent multiplier positions (2x and 3x point tiles)
       const multiplierPositions = generateMultipliers(difficulty);
 
       console.log(`✅ Level ${levelNumber} (${difficulty}): ${words.length} words found on attempt ${attempts}`);
 
       // Report filtering results
-      if (removed.length > 0) {
-        console.log(`   🚫 Filtered ${removed.length} inappropriate words: ${removed.join(', ')}`);
-      }
       if (warnings.length > 0) {
         console.log(`   ⚠️  ${warnings.length} questionable words (kept): ${warnings.join(', ')}`);
       }
 
-      console.log(`   ✓ ${filtered.length} clean words`);
+      console.log(`   ✓ ${filtered.length} clean words (no inappropriate words possible)`);
       console.log(`   Sample words: ${filtered.slice(0, 5).join(', ')}`);
       console.log(`   Multipliers: ${multiplierPositions.length} tiles (${multiplierPositions.filter(m => m.value === 2).length}x 2×, ${multiplierPositions.filter(m => m.value === 3).length}x 3×)`);
 
