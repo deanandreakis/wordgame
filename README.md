@@ -6,7 +6,7 @@
 ![Expo](https://img.shields.io/badge/Expo-50.0.0-000020?style=for-the-badge&logo=expo)
 ![React Native](https://img.shields.io/badge/React_Native-0.73.2-61DAFB?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-3178C6?style=for-the-badge&logo=typescript)
-![Firebase](https://img.shields.io/badge/Firebase-Latest-FFCA28?style=for-the-badge&logo=firebase)
+![GameCenter](https://img.shields.io/badge/GameCenter-iOS-000000?style=for-the-badge&logo=apple)
 ![EAS](https://img.shields.io/badge/EAS_Build-Enabled-4630EB?style=for-the-badge)
 
 **An addictive word puzzle game built with Expo! Develop on Linux, build for iOS & Android!**
@@ -46,13 +46,13 @@
 
 ### 🏗️ Technical Features
 - **Expo/EAS** - Build iOS apps from Linux!
-- **Firebase Backend** - Cloud Firestore for data persistence
+- **GameCenter Integration** - Native iOS authentication, leaderboards, and achievements
 - **RevenueCat** - Professional IAP management
-- **Anonymous Authentication** - Seamless user experience
-- **Offline Support** - Local storage with AsyncStorage
+- **Offline-First Design** - Local storage with AsyncStorage
+- **Cross-Device Sync** - Future iCloud Key-Value Storage support
 - **Comprehensive Tests** - 70%+ code coverage
 - **TypeScript** - Fully typed for reliability
-- **No Native Dependencies** - Pure JavaScript/TypeScript
+- **Modern Stack** - React Native with expo-game-center
 
 ---
 
@@ -89,7 +89,7 @@
 - **Node.js** >= 18
 - **npm** or **yarn**
 - **Expo account** (free at https://expo.dev/)
-- **Firebase Project** (for backend services)
+- **Apple Developer account** (for GameCenter and App Store)
 - **RevenueCat account** (for IAP)
 
 ### Quick Start
@@ -111,7 +111,6 @@ npm install
 cp .env.example .env
 
 # Edit .env and add your API keys:
-# - Firebase config (from Firebase Console)
 # - RevenueCat API keys (from RevenueCat Dashboard)
 # - Expo owner/project ID
 nano .env  # or use your preferred editor
@@ -246,7 +245,8 @@ letterloom/
 │   │   ├── LevelSelectScreen.tsx # Level picker
 │   │   └── GameScreen.tsx  # Main gameplay
 │   ├── services/           # External services
-│   │   ├── firebase.ts     # Firebase integration
+│   │   ├── gamecenter.ts   # GameCenter integration (iOS)
+│   │   ├── cloudSync.ts    # iCloud sync (placeholder)
 │   │   └── iap.ts         # In-app purchases
 │   ├── utils/             # Utilities
 │   │   ├── gameLogic.ts   # Core game mechanics
@@ -300,7 +300,7 @@ npm run test:coverage
 ### Test Structure
 - **Unit Tests**: Core game logic and utilities
 - **Component Tests**: UI component behavior
-- **Integration Tests**: Firebase and IAP services
+- **Integration Tests**: GameCenter and IAP services
 
 **Coverage Goals**: 70%+ for all metrics
 
@@ -375,10 +375,10 @@ npm run test:coverage
 - **EAS Build** - Cloud-based iOS/Android builds from Linux
 - **React Native** 0.73.2 - Cross-platform mobile framework
 - **TypeScript** 5.3.3 - Type-safe JavaScript
-- **Firebase (Web SDK)** 10.7.1
-  - Authentication - Anonymous sign-in
-  - Cloud Firestore - Real-time database
-  - No native dependencies required!
+- **Expo Game Center** 1.0.0
+  - Authentication - GameCenter Player ID
+  - Leaderboards - Global rankings
+  - Achievements - Milestone tracking
 - **RevenueCat** 7.0.0 - Professional IAP management
 - **Expo Linear Gradient** - Beautiful gradients
 - **Expo Haptics** - Tactile feedback
@@ -412,13 +412,13 @@ LetterLoom uses **industry-standard secrets management** to protect API keys and
          ↓
   expo-constants (runtime access)
          ↓
-  firebase.ts & iap.ts (consume secrets)
+  iap.ts (consume secrets)
 ```
 
 ### Protected Credentials
-- ✅ Firebase API keys & configuration
 - ✅ RevenueCat iOS/Android API keys
 - ✅ Expo project credentials
+- ✅ GameCenter configuration (App Store Connect)
 - ✅ All secrets excluded from GitHub via `.gitignore`
 
 **See `EAS_SETUP.md` for detailed setup instructions.**

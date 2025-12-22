@@ -6,7 +6,11 @@ import {GameScreen} from './screens/GameScreen';
 import {ShopScreen} from './screens/ShopScreen';
 import {HelpScreen} from './screens/HelpScreen';
 import {Level, UserProfile} from './types/game';
-import {FirebaseAuth, FirebaseFirestore} from './services/firebase';
+import {
+  GameCenterService,
+  GAMECENTER_LEADERBOARDS,
+  GAMECENTER_ACHIEVEMENTS,
+} from './services/gamecenter';
 import {
   IAPService,
   isPremiumActive,
@@ -98,13 +102,6 @@ const App: React.FC = () => {
       setUserProfile(updatedProfile);
       await saveUserProfile(updatedProfile);
 
-      // Try to save to Firebase, but don't fail if it doesn't work
-      try {
-        await FirebaseFirestore.saveUserProfile(updatedProfile);
-      } catch (error) {
-        console.warn('Could not save updated profile to Firebase:', error);
-      }
-
       console.log('Profile updated after purchase');
     };
 
@@ -115,18 +112,33 @@ const App: React.FC = () => {
 
   const initializeApp = async () => {
     try {
-      // Initialize Firebase Auth
+      // Initialize GameCenter Authentication
       let userId: string;
+      let displayName: string;
+
       try {
-        userId = FirebaseAuth.getCurrentUserId() || '';
-        if (!userId) {
-          userId = await FirebaseAuth.signInAnonymously();
+        // Attempt to authenticate with GameCenter
+        const isAuthenticated = await GameCenterService.authenticatePlayer();
+
+        if (isAuthenticated) {
+          // Get GameCenter player info
+          const player = await GameCenterService.getLocalPlayer();
+          if (player) {
+            userId = player.playerID;
+            displayName = player.alias || player.displayName;
+            console.log(`GameCenter authenticated: ${displayName} (${userId})`);
+          } else {
+            throw new Error('Failed to get GameCenter player info');
+          }
+        } else {
+          throw new Error('GameCenter authentication failed or cancelled');
         }
-      } catch (firebaseError) {
-        console.error('Firebase initialization failed:', firebaseError);
-        // Generate a temporary local user ID for offline use
-        userId = `offline_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        console.log('Using offline mode with temporary user ID');
+      } catch (gameCenterError) {
+        console.warn('GameCenter authentication failed:', gameCenterError);
+        // Generate a temporary local user ID for offline/non-GameCenter use
+        userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        displayName = `Player${Math.floor(Math.random() * 10000)}`;
+        console.log('Using local mode without GameCenter');
       }
 
       // Load or create user profile
@@ -135,7 +147,7 @@ const App: React.FC = () => {
         // Create new profile
         profile = {
           userId,
-          displayName: `Player${Math.floor(Math.random() * 10000)}`,
+          displayName,
           totalScore: 0,
           highestLevel: 1,
           totalWordsFound: 0,
@@ -148,13 +160,14 @@ const App: React.FC = () => {
           lastPlayedDate: new Date().toISOString(),
         };
         await saveUserProfile(profile);
-
-        // Try to save to Firebase, but don't fail if it doesn't work
-        try {
-          await FirebaseFirestore.saveUserProfile(profile);
-        } catch (error) {
-          console.warn('Could not save profile to Firebase:', error);
-        }
+        console.log('Created new user profile');
+      } else if (profile.userId !== userId) {
+        // User ID changed (e.g., switched GameCenter account)
+        // Update profile with new GameCenter identity
+        profile.userId = userId;
+        profile.displayName = displayName;
+        await saveUserProfile(profile);
+        console.log('Updated profile with new GameCenter identity');
       }
 
       setUserProfile(profile);
@@ -173,7 +186,6 @@ const App: React.FC = () => {
           // Profile was updated, save and update state
           setUserProfile(syncedProfile);
           await saveUserProfile(syncedProfile);
-          await FirebaseFirestore.saveUserProfile(syncedProfile);
           console.log('Profile synced with RevenueCat purchases');
         }
       } catch (error) {
@@ -224,20 +236,99 @@ const App: React.FC = () => {
       setUserProfile(updatedProfile);
       await saveUserProfile(updatedProfile);
 
-      // Try to save to Firebase, but don't fail if it doesn't work
+      // Submit scores to GameCenter leaderboards
       try {
-        await FirebaseFirestore.saveUserProfile(updatedProfile);
-
-        // Update leaderboard
-        await FirebaseFirestore.updateLeaderboard({
-          userId: userProfile.userId,
-          displayName: userProfile.displayName,
-          score: updatedProfile.totalScore,
-          level: updatedProfile.highestLevel,
-          timestamp: Date.now(),
-        });
+        await GameCenterService.submitScore(
+          updatedProfile.totalScore,
+          GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
+        );
+        await GameCenterService.submitScore(
+          updatedProfile.highestLevel,
+          GAMECENTER_LEADERBOARDS.HIGHEST_LEVEL,
+        );
+        await GameCenterService.submitScore(
+          updatedProfile.totalWordsFound,
+          GAMECENTER_LEADERBOARDS.TOTAL_WORDS,
+        );
       } catch (error) {
-        console.warn('Could not sync with Firebase:', error);
+        console.warn('Could not submit scores to GameCenter:', error);
+      }
+
+      // Check and report achievements
+      try {
+        const completedCount = updatedProfile.completedLevels.length;
+        if (completedCount >= 10) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.COMPLETE_10_LEVELS,
+            100,
+          );
+        }
+        if (completedCount >= 20) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.COMPLETE_20_LEVELS,
+            100,
+          );
+        }
+        if (completedCount >= 40) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.COMPLETE_40_LEVELS,
+            100,
+          );
+        }
+        if (completedCount >= 60) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.COMPLETE_60_LEVELS,
+            100,
+          );
+        }
+        if (completedCount >= 80) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.COMPLETE_80_LEVELS,
+            100,
+          );
+        }
+
+        // Score-based achievements
+        if (updatedProfile.totalScore >= 10000) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.SCORE_10000,
+            100,
+          );
+        }
+        if (updatedProfile.totalScore >= 50000) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.SCORE_50000,
+            100,
+          );
+        }
+        if (updatedProfile.totalScore >= 100000) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.SCORE_100000,
+            100,
+          );
+        }
+
+        // Word count achievements
+        if (updatedProfile.totalWordsFound >= 100) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.FIND_100_WORDS,
+            100,
+          );
+        }
+        if (updatedProfile.totalWordsFound >= 500) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.FIND_500_WORDS,
+            100,
+          );
+        }
+        if (updatedProfile.totalWordsFound >= 1000) {
+          await GameCenterService.reportAchievement(
+            GAMECENTER_ACHIEVEMENTS.FIND_1000_WORDS,
+            100,
+          );
+        }
+      } catch (error) {
+        console.warn('Could not report achievements to GameCenter:', error);
       }
 
       console.log(
@@ -257,10 +348,15 @@ const App: React.FC = () => {
     setCurrentScreen('levelSelect');
   };
 
-  const handleLeaderboardPress = () => {
-    setCurrentScreen('leaderboard');
-    // TODO: Implement leaderboard screen
-    console.log('Leaderboard coming soon!');
+  const handleLeaderboardPress = async () => {
+    // Show GameCenter leaderboard UI
+    try {
+      await GameCenterService.showLeaderboard(
+        GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
+      );
+    } catch (error) {
+      console.error('Error showing leaderboard:', error);
+    }
   };
 
   const handleShopPress = () => {

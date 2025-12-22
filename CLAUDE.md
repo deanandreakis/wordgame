@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **LetterLoom** is an addictive word puzzle game built with Expo/React Native. The app features:
 - 80 pre-calculated levels across 4 packs (Free + 3 Premium)
 - Real-time word validation against level-specific word lists
-- Firebase backend for user profiles and leaderboards
+- GameCenter integration for authentication, leaderboards, and achievements (iOS)
 - RevenueCat integration for in-app purchases
 - Cross-platform: iOS and Android builds via EAS (no Mac required)
 
@@ -63,7 +63,7 @@ Screens (MenuScreen, GameScreen, LevelSelectScreen, ShopScreen, etc.)
     ↓
 Components (LetterTile, GameBoard, WordInput, ScoreDisplay, etc.)
     ↓
-Services (firebase.ts, iap.ts) + Utilities (gameLogic, dictionary, storage)
+Services (gamecenter.ts, cloudSync.ts, iap.ts) + Utilities (gameLogic, dictionary, storage)
     ↓
 Data (levels.ts, constants.ts) + Types (game.ts)
 ```
@@ -76,7 +76,8 @@ User completes level
   ├─ Call App.handleLevelComplete(levelId, stars, score)
   │   ├─ Update UserProfile (completedLevels[], totalScore, currentLevel)
   │   ├─ Save to AsyncStorage (immediate)
-  │   └─ Sync to Firestore (background)
+  │   ├─ Submit scores to GameCenter leaderboards (background)
+  │   └─ Report achievement progress to GameCenter (background)
   └─ Show completion modal → Return to LevelSelectScreen
 ```
 
@@ -114,10 +115,11 @@ Runtime: O(1) lookup
   - No dictionary lookup here! Uses `LEVELS[levelId].validWords[]`
   - Score calculation: `(baseScore × lengthBonus × tileMultipliers) × 10`
 - **dictionary.ts** - Simple word list helpers
-- **storage.ts** - AsyncStorage + Firestore sync for user profile persistence
+- **storage.ts** - AsyncStorage for user profile persistence
 
 ### Services (`src/services/`)
-- **firebase.ts** - Anonymous auth, profile sync, leaderboard updates
+- **gamecenter.ts** - GameCenter authentication, leaderboards, and achievements (iOS)
+- **cloudSync.ts** - iCloud sync service (placeholder for future implementation)
 - **iap.ts** - RevenueCat integration, purchase handling, entitlement checking
 
 ### Data & Config (`src/data/` and `src/config/`)
@@ -158,7 +160,7 @@ Runtime: O(1) lookup
 ### Test Structure
 - Unit tests: `src/**/__tests__/*.test.ts`
 - Component tests: React Native Testing Library for UI components
-- Integration tests: Firebase and IAP flow tests
+- Integration tests: GameCenter and IAP flow tests
 
 ### Running Tests
 ```bash
@@ -169,7 +171,7 @@ npm test -- gameLogic.test.ts  # Single file
 ```
 
 ### Writing Tests
-- Mock Firebase in tests using `jest.mock()`
+- Mock GameCenter in tests using `jest.mock('expo-game-center')`
 - Mock RevenueCat using `jest.mock('react-native-purchases')`
 - Test gameLogic functions with various word/multiplier scenarios
 
@@ -180,7 +182,7 @@ npm test -- gameLogic.test.ts  # Single file
 ### UserProfile (Persistent Across Sessions)
 ```typescript
 {
-  userId: string           // Firebase UID
+  userId: string           // GameCenter Player ID (or local fallback)
   totalScore: number       // All-time score
   currentLevel: number     // Highest level reached
   lastPackPlayed?: number  // Remember which pack (0-3)
@@ -210,8 +212,9 @@ npm test -- gameLogic.test.ts  # Single file
 
 ### Sync Strategy
 1. **Local First**: Save to AsyncStorage immediately on change
-2. **Cloud Sync**: Periodically sync to Firestore (with exponential backoff on failure)
-3. **Offline**: App works fully offline, syncs when connection returns
+2. **GameCenter Sync**: Submit scores and achievements to GameCenter (iOS only, best-effort)
+3. **Future Enhancement**: iCloud Key-Value Storage for cross-device profile sync (placeholder in cloudSync.ts)
+4. **Offline**: App works fully offline; GameCenter submissions happen when online
 
 ---
 
@@ -223,9 +226,9 @@ npm test -- gameLogic.test.ts  # Single file
 - Production builds use EAS Secrets (cloud-encrypted)
 
 ### Protected Credentials
-- Firebase config (API keys, project ID)
 - RevenueCat API keys (iOS and Android)
 - App signing certificates (in EAS)
+- GameCenter configuration (leaderboard IDs, achievement IDs in App Store Connect)
 
 ### Access Pattern
 ```
@@ -235,7 +238,7 @@ app.config.js (read via process.env)
   ↓
 expo-constants (runtime access)
   ↓
-firebase.ts & iap.ts (consumed here)
+iap.ts (consumed here)
 ```
 
 ---
@@ -257,11 +260,12 @@ firebase.ts & iap.ts (consumed here)
 ## 🔗 Dependencies & Integration Points
 
 ### External Services
-- **Firebase**: Anonymous auth, Firestore for profiles/leaderboards
+- **GameCenter**: iOS-native authentication, leaderboards, and achievements
 - **RevenueCat**: IAP abstraction layer (handles App Store & Play Store receipts)
 - **Expo**: React Native managed framework, EAS Build for CI/CD
 
 ### Key Packages
+- `expo-game-center` - GameCenter integration for iOS
 - `react-native-reanimated` - Smooth animations
 - `expo-secure-store` - Encrypted token storage
 - `expo-haptics` - Vibration feedback
@@ -274,12 +278,12 @@ firebase.ts & iap.ts (consumed here)
 ### Common Issues
 1. **Word not validating?** Check that `src/data/levels.ts` was regenerated. Run: `node scripts/generateValidatedLevels.js`
 2. **IAP not working?** Verify RevenueCat API keys in `.env` and entitlements in RevenueCat dashboard
-3. **Firestore sync failing?** Check Firebase rules and network connection (use AsyncStorage fallback)
+3. **GameCenter not working?** Ensure you're testing on a real iOS device (not simulator) and have expo-game-center installed
 4. **Build fails?** Run `npm install` and ensure all EAS secrets are set via `eas secret:list`
 
 ### Enable Debug Logging
 - `gameLogic.ts`: Add `console.log()` in `validateWord()` to see word validation
-- `firebase.ts`: Log Firestore queries and sync status
+- `gamecenter.ts`: Check console for GameCenter authentication and submission status
 - `iap.ts`: RevenueCat has built-in logging in dev mode
 
 ---
