@@ -44,8 +44,24 @@ function isNativeModuleAvailable(): boolean {
  */
 function getGameCenter() {
   try {
-    return require('expo-game-center');
+    // Try to get from expo-game-center
+    const module = require('expo-game-center');
+    console.log('[GameCenter] Module loaded:', typeof module);
+    return module;
   } catch (error) {
+    console.warn('[GameCenter] Failed to load expo-game-center:', error);
+
+    // Try to access native module directly
+    try {
+      const { NativeModules } = require('react-native');
+      if (NativeModules.ExpoGameCenter) {
+        console.log('[GameCenter] Found native module directly');
+        return NativeModules.ExpoGameCenter;
+      }
+    } catch (e) {
+      console.warn('[GameCenter] No native module found');
+    }
+
     return null;
   }
 }
