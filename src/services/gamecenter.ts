@@ -25,13 +25,16 @@ export interface LeaderboardEntry {
  */
 function isNativeModuleAvailable(): boolean {
   if (Platform.OS !== 'ios') {
+    console.log('[GameCenter] Not iOS');
     return false;
   }
 
   try {
     require('expo-game-center');
+    console.log('[GameCenter] Native module available');
     return true;
   } catch (error) {
+    console.warn('[GameCenter] Native module not available:', error);
     return false;
   }
 }

@@ -44,7 +44,6 @@ module.exports = {
     plugins: [
       'expo-secure-store',
       'expo-font',
-      'expo-game-center',
       [
         'expo-build-properties',
         {
