@@ -17,6 +17,7 @@ interface Props {
   onLeaderboardPress: () => void;
   onShopPress: () => void;
   onHelpPress: () => void;
+  onLogsPress?: () => void;
 }
 
 export const MenuScreen: React.FC<Props> = ({
@@ -24,6 +25,7 @@ export const MenuScreen: React.FC<Props> = ({
   onLeaderboardPress,
   onShopPress,
   onHelpPress,
+  onLogsPress,
 }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const titleScale = React.useRef(new Animated.Value(0)).current;
@@ -189,6 +191,36 @@ export const MenuScreen: React.FC<Props> = ({
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
+
+            {/* Debug button - toggle SHOW_DEBUG_LOGS in constants.ts for production */}
+            {GAME_CONFIG.SHOW_DEBUG_LOGS && onLogsPress && (
+              <Animated.View
+                style={[
+                  styles.debugButtonWrapper,
+                  {
+                    opacity: secondaryButtonsAnim,
+                    transform: [
+                      {
+                        translateY: secondaryButtonsAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [30, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}>
+                <TouchableOpacity
+                  onPress={onLogsPress}
+                  activeOpacity={0.8}
+                  style={styles.debugButton}>
+                  <LinearGradient
+                    colors={['#ff6b6b', '#ff8787']}
+                    style={styles.debugButtonGradient}>
+                    <Text style={styles.debugButtonText}>🐛 Debug Logs</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
           </View>
 
           <Text style={styles.version}>v1.0.0</Text>
@@ -308,5 +340,23 @@ const styles = StyleSheet.create({
     bottom: 20,
     fontSize: 12,
     color: GAME_CONFIG.COLORS.textSecondary,
+  },
+  debugButtonWrapper: {
+    width: '100%',
+    marginTop: 8,
+  },
+  debugButton: {
+    width: '100%',
+  },
+  debugButtonGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: GAME_CONFIG.COLORS.text,
   },
 });

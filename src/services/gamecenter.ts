@@ -46,22 +46,18 @@ function getGameCenter() {
   try {
     // Try to get from expo-game-center
     const module = require('expo-game-center');
-    console.log('[GameCenter] Module loaded:', typeof module);
-    return module;
-  } catch (error) {
-    console.warn('[GameCenter] Failed to load expo-game-center:', error);
+    // Access the default export (the native module)
+    const nativeModule = module?.default;
 
-    // Try to access native module directly
-    try {
-      const { NativeModules } = require('react-native');
-      if (NativeModules.ExpoGameCenter) {
-        console.log('[GameCenter] Found native module directly');
-        return NativeModules.ExpoGameCenter;
-      }
-    } catch (e) {
-      console.warn('[GameCenter] No native module found');
+    if (nativeModule) {
+      console.log('[GameCenter] Native module loaded');
+      return nativeModule;
     }
 
+    console.warn('[GameCenter] Native module is null');
+    return null;
+  } catch (error) {
+    console.warn('[GameCenter] Failed to load expo-game-center:', error);
     return null;
   }
 }
@@ -113,15 +109,33 @@ export const GameCenterService = {
     }
 
     try {
-      const isAuthenticated = await GameCenter.authenticateLocalPlayer();
+      console.log('[GameCenter] Starting authentication...');
+
+      // Add timeout to prevent hanging
+      const authPromise = GameCenter.authenticateLocalPlayer();
+      const timeoutPromise = new Promise<boolean>((resolve) => {
+        setTimeout(() => {
+          console.warn('[GameCenter] Authentication timeout after 3 seconds');
+          resolve(false);
+        }, 3000);
+      });
+
+      const isAuthenticated = await Promise.race([authPromise, timeoutPromise]);
+
       if (isAuthenticated) {
-        console.log('GameCenter player authenticated successfully');
+        console.log('[GameCenter] Player authenticated successfully');
       } else {
-        console.warn('GameCenter authentication failed or was cancelled');
+        console.warn('[GameCenter] Authentication failed or was cancelled');
       }
       return isAuthenticated;
-    } catch (error) {
-      console.error('Error authenticating GameCenter player:', error);
+    } catch (error: any) {
+      console.error('[GameCenter] Error authenticating player:', {
+        message: error?.message || 'No message',
+        code: error?.code || 'No code',
+        name: error?.name || 'No name',
+        stack: error?.stack || 'No stack',
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      });
       return false;
     }
   },
@@ -132,7 +146,7 @@ export const GameCenterService = {
    */
   async getLocalPlayer(): Promise<GameCenterPlayer | null> {
     if (!this.isAvailable) {
-      console.warn('GameCenter not available');
+      console.warn('[GameCenter] Not available');
       return null;
     }
 
@@ -140,10 +154,27 @@ export const GameCenterService = {
     if (!GameCenter) return null;
 
     try {
-      const player = await GameCenter.getLocalPlayer();
+      console.log('[GameCenter] Getting local player...');
+
+      // Add timeout to prevent hanging
+      const playerPromise = GameCenter.getLocalPlayer();
+      const timeoutPromise = new Promise<GameCenterPlayer | null>((resolve) => {
+        setTimeout(() => {
+          console.warn('[GameCenter] getLocalPlayer timeout after 2 seconds');
+          resolve(null);
+        }, 2000);
+      });
+
+      const player = await Promise.race([playerPromise, timeoutPromise]);
+      console.log('[GameCenter] Got local player:', player);
       return player as GameCenterPlayer;
-    } catch (error) {
-      console.error('Error getting local player:', error);
+    } catch (error: any) {
+      console.error('[GameCenter] Error getting local player:', {
+        message: error?.message || 'No message',
+        code: error?.code || 'No code',
+        name: error?.name || 'No name',
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      });
       return null;
     }
   },
@@ -202,17 +233,37 @@ export const GameCenterService = {
    */
   async showLeaderboard(leaderboardID: string): Promise<void> {
     if (!this.isAvailable) {
-      console.warn('GameCenter not available - cannot show leaderboard');
+      console.warn('[GameCenter] Not available - cannot show leaderboard');
       return;
     }
 
     const GameCenter = getGameCenter();
-    if (!GameCenter) return;
+    if (!GameCenter) {
+      console.warn('[GameCenter] Module not found - cannot show leaderboard');
+      return;
+    }
 
     try {
-      await GameCenter.presentLeaderboard(leaderboardID);
-    } catch (error) {
-      console.error('Error presenting leaderboard:', error);
+      console.log(`[GameCenter] Attempting to show leaderboard: ${leaderboardID}`);
+
+      // Add timeout to prevent UI freeze
+      const leaderboardPromise = GameCenter.presentLeaderboard(leaderboardID);
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Leaderboard presentation timeout after 10 seconds'));
+        }, 10000);
+      });
+
+      await Promise.race([leaderboardPromise, timeoutPromise]);
+      console.log('[GameCenter] Leaderboard presented successfully');
+    } catch (error: any) {
+      console.error('[GameCenter] Error presenting leaderboard:', {
+        message: error?.message || 'No message',
+        code: error?.code || 'No code',
+        name: error?.name || 'No name',
+        stack: error?.stack || 'No stack',
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      });
     }
   },
 

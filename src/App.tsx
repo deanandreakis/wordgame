@@ -5,6 +5,7 @@ import {LevelSelectScreen} from './screens/LevelSelectScreen';
 import {GameScreen} from './screens/GameScreen';
 import {ShopScreen} from './screens/ShopScreen';
 import {HelpScreen} from './screens/HelpScreen';
+import {LogScreen} from './screens/LogScreen';
 import {Level, UserProfile} from './types/game';
 import {
   GameCenterService,
@@ -24,8 +25,10 @@ import {
 } from './utils/storage';
 import {IAP_PRODUCTS, COIN_REWARDS, GAME_CONFIG} from './config/constants';
 import type {CustomerInfo} from 'react-native-purchases';
+// Import log capture to initialize it early
+import './utils/logCapture';
 
-type Screen = 'menu' | 'levelSelect' | 'game' | 'leaderboard' | 'shop' | 'help';
+type Screen = 'menu' | 'levelSelect' | 'game' | 'leaderboard' | 'shop' | 'help' | 'logs';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('menu');
@@ -34,9 +37,18 @@ const App: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    initializeApp();
+    // Safety timeout: force initialization after 5 seconds
+    const timeout = setTimeout(() => {
+      console.warn('[App] Initialization timeout - forcing app to show');
+      setIsInitialized(true);
+    }, 5000);
+
+    initializeApp().finally(() => {
+      clearTimeout(timeout);
+    });
 
     return () => {
+      clearTimeout(timeout);
       IAPService.cleanup();
     };
   }, []);
@@ -349,14 +361,34 @@ const App: React.FC = () => {
   };
 
   const handleLeaderboardPress = async () => {
-    // Show GameCenter leaderboard UI
+    console.log('[App] Leaderboard button pressed');
+    console.log('[App] GameCenter available:', GameCenterService.isAvailable);
+
+    // Temporarily disabled - native calls are freezing
+    console.warn('[App] GameCenter integration temporarily disabled to prevent freeze');
+    Alert.alert(
+      'GameCenter Debug',
+      'GameCenter is being debugged. Check debug logs for status.',
+      [{text: 'OK'}]
+    );
+
+    // TODO: Re-enable once native calls are fixed
+    /*
+    if (!GameCenterService.isAvailable) {
+      console.warn('[App] GameCenter not available');
+      return;
+    }
+
     try {
+      console.log('[App] Showing leaderboard...');
       await GameCenterService.showLeaderboard(
         GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
       );
+      console.log('[App] Leaderboard shown successfully');
     } catch (error) {
-      console.error('Error showing leaderboard:', error);
+      console.error('[App] Error in leaderboard flow:', error);
     }
+    */
   };
 
   const handleShopPress = () => {
@@ -365,6 +397,10 @@ const App: React.FC = () => {
 
   const handleHelpPress = () => {
     setCurrentScreen('help');
+  };
+
+  const handleLogsPress = () => {
+    setCurrentScreen('logs');
   };
 
   const handleBackToMenu = () => {
@@ -388,6 +424,7 @@ const App: React.FC = () => {
           onLeaderboardPress={handleLeaderboardPress}
           onShopPress={handleShopPress}
           onHelpPress={handleHelpPress}
+          onLogsPress={handleLogsPress}
         />
       )}
       {currentScreen === 'levelSelect' && (
@@ -420,6 +457,9 @@ const App: React.FC = () => {
       )}
       {currentScreen === 'help' && (
         <HelpScreen onBack={handleBackToMenu} />
+      )}
+      {currentScreen === 'logs' && (
+        <LogScreen onBack={handleBackToMenu} />
       )}
     </>
   );
