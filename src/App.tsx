@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {StatusBar, View, Text, TouchableOpacity} from 'react-native';
+import {StatusBar, View, Text, TouchableOpacity, Alert} from 'react-native';
 import {MenuScreen} from './screens/MenuScreen';
 import {LevelSelectScreen} from './screens/LevelSelectScreen';
 import {GameScreen} from './screens/GameScreen';
@@ -7,8 +7,8 @@ import {ShopScreen} from './screens/ShopScreen';
 import {HelpScreen} from './screens/HelpScreen';
 import {LogScreen} from './screens/LogScreen';
 import {Level, UserProfile} from './types/game';
+import {useGameCenter} from 'expo-game-center';
 import {
-  GameCenterService,
   GAMECENTER_LEADERBOARDS,
   GAMECENTER_ACHIEVEMENTS,
 } from './services/gamecenter';
@@ -35,6 +35,36 @@ const App: React.FC = () => {
   const [currentLevel, setCurrentLevel] = useState<Level | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Use the GameCenter hook (recommended way!)
+  const {
+    isReady: isGameCenterReady,
+    isLoading: isGameCenterLoading,
+    player: gameCenterPlayer,
+    submitScore: submitGameCenterScore,
+    showLeaderboard: showGameCenterLeaderboard,
+    reportAchievement: reportGameCenterAchievement,
+  } = useGameCenter({
+    leaderboards: {
+      alltime: GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
+      level: GAMECENTER_LEADERBOARDS.HIGHEST_LEVEL,
+      words: GAMECENTER_LEADERBOARDS.TOTAL_WORDS,
+    },
+    achievements: {
+      complete10: GAMECENTER_ACHIEVEMENTS.COMPLETE_10_LEVELS,
+      complete20: GAMECENTER_ACHIEVEMENTS.COMPLETE_20_LEVELS,
+      complete40: GAMECENTER_ACHIEVEMENTS.COMPLETE_40_LEVELS,
+      complete60: GAMECENTER_ACHIEVEMENTS.COMPLETE_60_LEVELS,
+      complete80: GAMECENTER_ACHIEVEMENTS.COMPLETE_80_LEVELS,
+      score10k: GAMECENTER_ACHIEVEMENTS.SCORE_10000,
+      score50k: GAMECENTER_ACHIEVEMENTS.SCORE_50000,
+      score100k: GAMECENTER_ACHIEVEMENTS.SCORE_100000,
+      words100: GAMECENTER_ACHIEVEMENTS.FIND_100_WORDS,
+      words500: GAMECENTER_ACHIEVEMENTS.FIND_500_WORDS,
+      words1000: GAMECENTER_ACHIEVEMENTS.FIND_1000_WORDS,
+    },
+    autoInitialize: true, // Automatically handles authentication!
+  });
 
   useEffect(() => {
     // Safety timeout: force initialization after 5 seconds
@@ -124,15 +154,28 @@ const App: React.FC = () => {
 
   const initializeApp = async () => {
     try {
-      // Initialize GameCenter Authentication
+      // GameCenter is now handled by useGameCenter hook with autoInitialize: true
+      // It will authenticate automatically in the background
+      console.log('[App] GameCenter hook status:', {
+        isReady: isGameCenterReady,
+        isLoading: isGameCenterLoading,
+        player: gameCenterPlayer,
+      });
+
+      // Initialize user ID
       let userId: string;
       let displayName: string;
 
-      // Don't authenticate at startup - do it when user requests leaderboard instead
-      // Just generate a local user ID for now
-      userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      displayName = `Player${Math.floor(Math.random() * 10000)}`;
-      console.log('[App] Using local mode (GameCenter authentication deferred to user action)');
+      // Use GameCenter player if available, otherwise generate local ID
+      if (isGameCenterReady && gameCenterPlayer) {
+        userId = gameCenterPlayer.playerID;
+        displayName = gameCenterPlayer.displayName;
+        console.log('[App] Using GameCenter player:', {userId, displayName});
+      } else {
+        userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        displayName = `Player${Math.floor(Math.random() * 10000)}`;
+        console.log('[App] Using local player ID (GameCenter not ready):', {userId, displayName});
+      }
 
       // Load or create user profile
       let profile = await getUserProfile();
@@ -230,98 +273,69 @@ const App: React.FC = () => {
       await saveUserProfile(updatedProfile);
 
       // Submit scores to GameCenter leaderboards
-      try {
-        await GameCenterService.submitScore(
-          updatedProfile.totalScore,
-          GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
-        );
-        await GameCenterService.submitScore(
-          updatedProfile.highestLevel,
-          GAMECENTER_LEADERBOARDS.HIGHEST_LEVEL,
-        );
-        await GameCenterService.submitScore(
-          updatedProfile.totalWordsFound,
-          GAMECENTER_LEADERBOARDS.TOTAL_WORDS,
-        );
-      } catch (error) {
-        console.warn('Could not submit scores to GameCenter:', error);
+      if (isGameCenterReady) {
+        try {
+          await submitGameCenterScore(updatedProfile.totalScore, 'alltime');
+          await submitGameCenterScore(updatedProfile.highestLevel, 'level');
+          await submitGameCenterScore(updatedProfile.totalWordsFound, 'words');
+          console.log('[App] Scores submitted to GameCenter successfully');
+        } catch (error) {
+          console.warn('[App] Could not submit scores to GameCenter:', error);
+        }
+      } else {
+        console.log('[App] GameCenter not ready, skipping score submission');
       }
 
       // Check and report achievements
-      try {
-        const completedCount = updatedProfile.completedLevels.length;
-        if (completedCount >= 10) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.COMPLETE_10_LEVELS,
-            100,
-          );
-        }
-        if (completedCount >= 20) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.COMPLETE_20_LEVELS,
-            100,
-          );
-        }
-        if (completedCount >= 40) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.COMPLETE_40_LEVELS,
-            100,
-          );
-        }
-        if (completedCount >= 60) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.COMPLETE_60_LEVELS,
-            100,
-          );
-        }
-        if (completedCount >= 80) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.COMPLETE_80_LEVELS,
-            100,
-          );
-        }
+      if (isGameCenterReady) {
+        try {
+          const completedCount = updatedProfile.completedLevels.length;
 
-        // Score-based achievements
-        if (updatedProfile.totalScore >= 10000) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.SCORE_10000,
-            100,
-          );
-        }
-        if (updatedProfile.totalScore >= 50000) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.SCORE_50000,
-            100,
-          );
-        }
-        if (updatedProfile.totalScore >= 100000) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.SCORE_100000,
-            100,
-          );
-        }
+          // Level completion achievements
+          if (completedCount >= 10) {
+            await reportGameCenterAchievement('complete10', 100);
+          }
+          if (completedCount >= 20) {
+            await reportGameCenterAchievement('complete20', 100);
+          }
+          if (completedCount >= 40) {
+            await reportGameCenterAchievement('complete40', 100);
+          }
+          if (completedCount >= 60) {
+            await reportGameCenterAchievement('complete60', 100);
+          }
+          if (completedCount >= 80) {
+            await reportGameCenterAchievement('complete80', 100);
+          }
 
-        // Word count achievements
-        if (updatedProfile.totalWordsFound >= 100) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.FIND_100_WORDS,
-            100,
-          );
+          // Score-based achievements
+          if (updatedProfile.totalScore >= 10000) {
+            await reportGameCenterAchievement('score10k', 100);
+          }
+          if (updatedProfile.totalScore >= 50000) {
+            await reportGameCenterAchievement('score50k', 100);
+          }
+          if (updatedProfile.totalScore >= 100000) {
+            await reportGameCenterAchievement('score100k', 100);
+          }
+
+          // Word count achievements
+          if (updatedProfile.totalWordsFound >= 100) {
+            await reportGameCenterAchievement('words100', 100);
+          }
+          if (updatedProfile.totalWordsFound >= 500) {
+            await reportGameCenterAchievement('words500', 100);
+          }
+          if (updatedProfile.totalWordsFound >= 1000) {
+            await reportGameCenterAchievement('words1000', 100);
+          }
+
+          console.log('[App] Achievements reported to GameCenter successfully');
+        } catch (error) {
+          console.warn('[App] Could not report achievements to GameCenter:', error);
         }
-        if (updatedProfile.totalWordsFound >= 500) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.FIND_500_WORDS,
-            100,
-          );
-        }
-        if (updatedProfile.totalWordsFound >= 1000) {
-          await GameCenterService.reportAchievement(
-            GAMECENTER_ACHIEVEMENTS.FIND_1000_WORDS,
-            100,
-          );
-        }
-      } catch (error) {
-        console.warn('Could not report achievements to GameCenter:', error);
+      } else {
+        console.log('[App] GameCenter not ready, skipping achievement reporting');
       }
 
       console.log(
@@ -343,36 +357,35 @@ const App: React.FC = () => {
 
   const handleLeaderboardPress = async () => {
     console.log('[App] Leaderboard button pressed');
+    console.log('[App] GameCenter ready:', isGameCenterReady);
+    console.log('[App] GameCenter loading:', isGameCenterLoading);
+    console.log('[App] GameCenter player:', gameCenterPlayer);
 
-    if (!GameCenterService.isAvailable) {
-      console.warn('[App] GameCenter not available');
-      Alert.alert('GameCenter Not Available', 'GameCenter is not available on this device.', [{text: 'OK'}]);
+    if (!isGameCenterReady) {
+      Alert.alert(
+        'GameCenter',
+        'Please sign in to GameCenter to view leaderboards.',
+        [{text: 'OK'}]
+      );
       return;
     }
 
     try {
-      // Try authenticating when user presses the button instead of at startup
-      console.log('[App] Authenticating on user action...');
-      const isAuthenticated = await GameCenterService.authenticatePlayer();
-      console.log('[App] Authentication result:', isAuthenticated);
-
-      if (!isAuthenticated) {
-        Alert.alert(
-          'GameCenter Authentication Failed',
-          'Could not authenticate with GameCenter. Check debug logs.',
-          [{text: 'OK'}]
-        );
-        return;
-      }
-
-      console.log('[App] Showing leaderboard...');
-      await GameCenterService.showLeaderboard(
-        GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
-      );
+      console.log('[App] Attempting to show leaderboard: alltime');
+      await showGameCenterLeaderboard('alltime');
       console.log('[App] Leaderboard shown successfully');
-    } catch (error) {
-      console.error('[App] Error in leaderboard flow:', error);
-      Alert.alert('Error', 'Failed to show leaderboard. Check debug logs.', [{text: 'OK'}]);
+    } catch (error: any) {
+      console.error('[App] Error showing leaderboard:', {
+        message: error?.message || 'No message',
+        code: error?.code || 'No code',
+        name: error?.name || 'No name',
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      });
+      Alert.alert(
+        'Error',
+        `Failed to show leaderboard: ${error?.message || 'Unknown error'}`,
+        [{text: 'OK'}]
+      );
     }
   };
 
