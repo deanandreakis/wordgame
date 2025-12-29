@@ -151,12 +151,21 @@ const App: React.FC = () => {
       console.log('[App] Initializing GameCenter service...');
       try {
         await gameCenterService.initialize();
-        const player = await gameCenterService.getPlayer();
-        if (player) {
-          setIsGameCenterReady(true);
-          console.log('[App] GameCenter initialized successfully:', player);
+        console.log('[App] GameCenter initialized, now authenticating...');
+
+        const authenticated = await gameCenterService.authenticate();
+        console.log('[App] GameCenter authentication result:', authenticated);
+
+        if (authenticated) {
+          const player = await gameCenterService.getPlayer();
+          if (player) {
+            setIsGameCenterReady(true);
+            console.log('[App] GameCenter ready! Player:', player);
+          } else {
+            console.warn('[App] Authenticated but no player returned');
+          }
         } else {
-          console.log('[App] GameCenter initialized but player not authenticated');
+          console.log('[App] GameCenter authentication failed or cancelled');
         }
       } catch (error) {
         console.error('[App] Failed to initialize GameCenter:', error);
