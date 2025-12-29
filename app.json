@@ -18,6 +18,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.letterloom.app",
       "buildNumber": "1",
+      "entitlements": {
+        "com.apple.developer.game-center": true
+      },
       "infoPlist": {
         "UIBackgroundModes": [],
         "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
