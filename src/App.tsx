@@ -129,8 +129,19 @@ const App: React.FC = () => {
       let displayName: string;
 
       try {
+        // Check if GameCenter is available first
+        console.log('[App] Checking GameCenter availability...');
+        const isAvailable = await GameCenterService.isGameCenterAvailable();
+        console.log('[App] GameCenter available:', isAvailable);
+
+        if (!isAvailable) {
+          throw new Error('GameCenter not available on this device');
+        }
+
         // Attempt to authenticate with GameCenter
+        console.log('[App] Attempting GameCenter authentication...');
         const isAuthenticated = await GameCenterService.authenticatePlayer();
+        console.log('[App] Authentication result:', isAuthenticated);
 
         if (isAuthenticated) {
           // Get GameCenter player info
@@ -138,7 +149,7 @@ const App: React.FC = () => {
           if (player) {
             userId = player.playerID;
             displayName = player.alias || player.displayName;
-            console.log(`GameCenter authenticated: ${displayName} (${userId})`);
+            console.log(`[App] GameCenter authenticated: ${displayName} (${userId})`);
           } else {
             throw new Error('Failed to get GameCenter player info');
           }
@@ -146,11 +157,11 @@ const App: React.FC = () => {
           throw new Error('GameCenter authentication failed or cancelled');
         }
       } catch (gameCenterError) {
-        console.warn('GameCenter authentication failed:', gameCenterError);
+        console.warn('[App] GameCenter authentication failed:', gameCenterError);
         // Generate a temporary local user ID for offline/non-GameCenter use
         userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         displayName = `Player${Math.floor(Math.random() * 10000)}`;
-        console.log('Using local mode without GameCenter');
+        console.log('[App] Using local mode without GameCenter');
       }
 
       // Load or create user profile

@@ -75,16 +75,33 @@ export const GameCenterService = {
    */
   async isGameCenterAvailable(): Promise<boolean> {
     if (!this.isAvailable) {
+      console.log('[GameCenter] Not available (platform check failed)');
       return false;
     }
 
     const GameCenter = getGameCenter();
-    if (!GameCenter) return false;
+    if (!GameCenter) {
+      console.warn('[GameCenter] Module not loaded');
+      return false;
+    }
 
     try {
-      return await GameCenter.isGameCenterAvailable();
+      console.log('[GameCenter] Checking availability...');
+
+      // Add timeout to prevent hanging
+      const availabilityPromise = GameCenter.isGameCenterAvailable();
+      const timeoutPromise = new Promise<boolean>((resolve) => {
+        setTimeout(() => {
+          console.warn('[GameCenter] isGameCenterAvailable timeout after 2 seconds');
+          resolve(false);
+        }, 2000);
+      });
+
+      const available = await Promise.race([availabilityPromise, timeoutPromise]);
+      console.log('[GameCenter] Availability check result:', available);
+      return available;
     } catch (error) {
-      console.warn('Error checking Game Center availability:', error);
+      console.warn('[GameCenter] Error checking availability:', error);
       return false;
     }
   },
