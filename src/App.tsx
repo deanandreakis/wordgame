@@ -128,41 +128,11 @@ const App: React.FC = () => {
       let userId: string;
       let displayName: string;
 
-      try {
-        // Check if GameCenter is available first
-        console.log('[App] Checking GameCenter availability...');
-        const isAvailable = await GameCenterService.isGameCenterAvailable();
-        console.log('[App] GameCenter available:', isAvailable);
-
-        if (!isAvailable) {
-          throw new Error('GameCenter not available on this device');
-        }
-
-        // Attempt to authenticate with GameCenter
-        console.log('[App] Attempting GameCenter authentication...');
-        const isAuthenticated = await GameCenterService.authenticatePlayer();
-        console.log('[App] Authentication result:', isAuthenticated);
-
-        if (isAuthenticated) {
-          // Get GameCenter player info
-          const player = await GameCenterService.getLocalPlayer();
-          if (player) {
-            userId = player.playerID;
-            displayName = player.alias || player.displayName;
-            console.log(`[App] GameCenter authenticated: ${displayName} (${userId})`);
-          } else {
-            throw new Error('Failed to get GameCenter player info');
-          }
-        } else {
-          throw new Error('GameCenter authentication failed or cancelled');
-        }
-      } catch (gameCenterError) {
-        console.warn('[App] GameCenter authentication failed:', gameCenterError);
-        // Generate a temporary local user ID for offline/non-GameCenter use
-        userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        displayName = `Player${Math.floor(Math.random() * 10000)}`;
-        console.log('[App] Using local mode without GameCenter');
-      }
+      // Don't authenticate at startup - do it when user requests leaderboard instead
+      // Just generate a local user ID for now
+      userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      displayName = `Player${Math.floor(Math.random() * 10000)}`;
+      console.log('[App] Using local mode (GameCenter authentication deferred to user action)');
 
       // Load or create user profile
       let profile = await getUserProfile();
@@ -373,24 +343,28 @@ const App: React.FC = () => {
 
   const handleLeaderboardPress = async () => {
     console.log('[App] Leaderboard button pressed');
-    console.log('[App] GameCenter available:', GameCenterService.isAvailable);
 
-    // Temporarily disabled - native calls are freezing
-    console.warn('[App] GameCenter integration temporarily disabled to prevent freeze');
-    Alert.alert(
-      'GameCenter Debug',
-      'GameCenter is being debugged. Check debug logs for status.',
-      [{text: 'OK'}]
-    );
-
-    // TODO: Re-enable once native calls are fixed
-    /*
     if (!GameCenterService.isAvailable) {
       console.warn('[App] GameCenter not available');
+      Alert.alert('GameCenter Not Available', 'GameCenter is not available on this device.', [{text: 'OK'}]);
       return;
     }
 
     try {
+      // Try authenticating when user presses the button instead of at startup
+      console.log('[App] Authenticating on user action...');
+      const isAuthenticated = await GameCenterService.authenticatePlayer();
+      console.log('[App] Authentication result:', isAuthenticated);
+
+      if (!isAuthenticated) {
+        Alert.alert(
+          'GameCenter Authentication Failed',
+          'Could not authenticate with GameCenter. Check debug logs.',
+          [{text: 'OK'}]
+        );
+        return;
+      }
+
       console.log('[App] Showing leaderboard...');
       await GameCenterService.showLeaderboard(
         GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
@@ -398,8 +372,8 @@ const App: React.FC = () => {
       console.log('[App] Leaderboard shown successfully');
     } catch (error) {
       console.error('[App] Error in leaderboard flow:', error);
+      Alert.alert('Error', 'Failed to show leaderboard. Check debug logs.', [{text: 'OK'}]);
     }
-    */
   };
 
   const handleShopPress = () => {
