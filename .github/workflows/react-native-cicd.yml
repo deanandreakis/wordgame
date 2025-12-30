@@ -7,8 +7,6 @@ on:
       - "**.md"
       - "LICENSE"
       - "docs/**"
-    buildType: all
-    platform: ios
   workflow_dispatch:
     inputs:
       buildType:
@@ -35,6 +33,8 @@ env:
   EXPO_APPLE_PASSWORD: ${{ secrets.EXPO_APPLE_PASSWORD }}
   EXPO_TEAM_ID: ${{ secrets.EXPO_TEAM_ID }}
   NODE_OPTIONS: --openssl-legacy-provider
+  BUILD_TYPE: ${{ github.event.inputs.buildType || 'all' }}
+  PLATFORM: ${{ github.event.inputs.platform || 'ios' }}
 
 jobs:
   check-skip:
@@ -93,13 +93,19 @@ jobs:
         run: |
           echo "EAS CLI version:"
           eas --version
+          echo "Build Type: ${{ env.BUILD_TYPE }}"
+          echo "Platform: ${{ env.PLATFORM }}"
 
       - name: 📋 Fix package.json main entry
         run: |
           # Check if jq is installed, if not install it
           if ! command -v jq &> /dev/null; then
             echo "Installing jq..."
-            sudo apt-get update && sudo apt-get install -y jq
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+              brew install jq
+            else
+              sudo apt-get update && sudo apt-get install -y jq
+            fi
           fi
 
           # Fix the main entry in package.json
@@ -148,7 +154,7 @@ jobs:
           fi
 
       - name: 📱 Build Development APK
-        if: github.event.inputs.buildType == 'all' || github.event.inputs.buildType == 'dev' || github.event_name == 'push' && (matrix.platform == 'android' || github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android')
+        if: (env.BUILD_TYPE == 'all' || env.BUILD_TYPE == 'dev') && (matrix.platform == 'android' || env.PLATFORM == 'all' || env.PLATFORM == 'android')
         run: |
           # Build with increased memory limit
           # export NODE_OPTIONS="--openssl-legacy-provider --max_old_space_size=4096"
@@ -157,7 +163,7 @@ jobs:
           NODE_ENV: development
 
       - name: 📱 Build iOS Development
-        if: (github.event.inputs.buildType == 'all' || github.event.inputs.buildType == 'ios-dev') && (matrix.platform == 'ios' || github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios')
+        if: (env.BUILD_TYPE == 'all' || env.BUILD_TYPE == 'ios-dev') && (matrix.platform == 'ios' || env.PLATFORM == 'all' || env.PLATFORM == 'ios')
         run: |
           export NODE_OPTIONS="--openssl-legacy-provider --max_old_space_size=4096"
           eas build --platform ios --profile development --local --non-interactive --output=./app-ios-dev.app
@@ -165,7 +171,7 @@ jobs:
           NODE_ENV: development
 
       - name: 📱 Build iOS Production
-        if: (github.event.inputs.buildType == 'all' || github.event.inputs.buildType == 'ios-prod') && (matrix.platform == 'ios' || github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios')
+        if: (env.BUILD_TYPE == 'all' || env.BUILD_TYPE == 'ios-prod') && (matrix.platform == 'ios' || env.PLATFORM == 'all' || env.PLATFORM == 'ios')
         run: |
           export NODE_OPTIONS="--openssl-legacy-provider --max_old_space_size=4096"
           eas build --platform ios --profile production --local --non-interactive --output=./app-ios-prod.ipa
@@ -173,7 +179,7 @@ jobs:
           NODE_ENV: production
 
       - name: 🚀 Publish to Expo
-        if: github.event.inputs.buildType == 'all' || github.event.inputs.buildType == 'publish-expo'
+        if: env.BUILD_TYPE == 'all' || env.BUILD_TYPE == 'publish-expo'
         run: |
           eas update --auto
         env:
@@ -188,4 +194,3 @@ jobs:
             ./app-ios-dev.app
             ./app-ios-prod.ipa
           retention-days: 7
-
