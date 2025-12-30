@@ -96,6 +96,14 @@ jobs:
           echo "Build Type: ${{ env.BUILD_TYPE }}"
           echo "Platform: ${{ env.PLATFORM }}"
 
+      - name: 🔐 Verify EAS Authentication
+        run: |
+          echo "Checking EAS authentication..."
+          eas whoami
+          echo "Token is working!"
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      
       - name: 📋 Fix package.json main entry
         run: |
           # Check if jq is installed, if not install it
