@@ -77,9 +77,13 @@ jobs:
             ${{ runner.os }}-npm-
 
       - name: 📦 Install dependencies
-        run: |
-          npm install
-          npm install -g eas-cli@latest
+        run: npm install
+
+      - name: 🔐 Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
       - name: 📱 Setup EAS build cache
         uses: actions/cache@v3
@@ -89,33 +93,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-eas-build-local-
 
-      - name: 🔄 Verify EAS CLI installation
+      - name: 🔄 Verify EAS Setup
         run: |
           echo "EAS CLI version:"
           eas --version
+          echo "Authenticated as:"
+          eas whoami
           echo "Build Type: ${{ env.BUILD_TYPE }}"
           echo "Platform: ${{ env.PLATFORM }}"
-
-      - name: 🔐 Verify EAS Authentication
-        run: |
-          echo "Checking EAS authentication..."
-          eas whoami
-          echo "Token is working!"
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      
-      - name: Debug Project Configuration
-        run: |
-            echo "=== App.json content ==="
-            cat app.json
-            echo ""
-            echo "=== Project ID ==="
-            grep -A 2 "projectId" app.json || echo "No projectId found"
-            echo ""
-            echo "=== Checking if project exists on EAS ==="
-            eas project:info || echo "Project not found or error accessing project"
-        env:
-            EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          echo ""
+          echo "Project info:"
+          eas project:info
 
       - name: 📋 Fix package.json main entry
         run: |
