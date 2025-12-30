@@ -60,7 +60,7 @@ jobs:
           security set-keychain-settings -t 3600 -u build.keychain
           
           # Import certificate to keychain
-          security import certificate.p12 -k build.keychain -P "${{ secrets.IOS_CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign -A
+          security import certificate.p12 -k build.keychain -P ${{ secrets.IOS_CERTIFICATE_PASSWORD }} -T /usr/bin/codesign -A
           security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
           
           # Install provisioning profile
