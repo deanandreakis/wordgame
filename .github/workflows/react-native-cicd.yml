@@ -45,32 +45,36 @@ jobs:
         with:
           xcode-version: latest-stable
 
+  
       - name: 🔐 Install signing certificate and provisioning profile
         run: |
           # Create directories
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          
-          # Decode certificate
-          echo "${{ secrets.IOS_CERTIFICATE_BASE64 }}" | base64 --decode > certificate.p12
+    
+          # Decode certificate from hex
+          echo "${{ secrets.IOS_CERTIFICATE_HEX }}" | xxd -r -p > certificate.p12
+    
+          # Verify certificate before importing
+          openssl pkcs12 -in certificate.p12 -noout -passin pass:${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           
           # Create temporary keychain
           security create-keychain -p actions build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p actions build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
-          
+
           # Import certificate to keychain
           security import certificate.p12 -k build.keychain -P ${{ secrets.IOS_CERTIFICATE_PASSWORD }} -T /usr/bin/codesign -A
           security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
-          
+    
           # Install provisioning profile
           echo "${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}" | base64 --decode > profile.mobileprovision
           UUID=$(grep -a -A 1 'UUID' profile.mobileprovision | grep string | sed -e 's/<string>//' -e 's/<\/string>//' | tr -d '\t')
           cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
-          
+    
           # Cleanup
           rm certificate.p12 profile.mobileprovision
-
+      
       - name: 🏗 Run Expo Prebuild
         run: npx expo prebuild --platform ios --clean
 
