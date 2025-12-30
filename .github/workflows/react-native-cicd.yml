@@ -7,6 +7,8 @@ on:
       - "**.md"
       - "LICENSE"
       - "docs/**"
+    buildType: all
+    platform: ios
   workflow_dispatch:
     inputs:
       buildType:
@@ -149,7 +151,7 @@ jobs:
         if: github.event.inputs.buildType == 'all' || github.event.inputs.buildType == 'dev' || github.event_name == 'push' && (matrix.platform == 'android' || github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android')
         run: |
           # Build with increased memory limit
-          export NODE_OPTIONS="--openssl-legacy-provider --max_old_space_size=4096"
+          # export NODE_OPTIONS="--openssl-legacy-provider --max_old_space_size=4096"
           # eas build --platform android --profile development --local --non-interactive --output=./app-dev.apk
         env:
           NODE_ENV: development
