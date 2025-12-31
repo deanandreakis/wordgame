@@ -73,7 +73,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="${{ secrets.EXPO_TEAM_ID }}" \
             CODE_SIGN_IDENTITY="iPhone Distribution" \
-            PROVISIONING_PROFILE="a9cab9c5-c1a0-4228-969f-5ae034a760e0" \
+            PROVISIONING_PROFILE_SPECIFIER="0891c2ca-63f5-4a05-831e-be27bc4d3d7d" \
             ONLY_ACTIVE_ARCH=NO
 
       - name: 📦 Export IPA
