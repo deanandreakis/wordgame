@@ -62,6 +62,11 @@ jobs:
       - name: 🏗 Run Expo Prebuild
         run: npx expo prebuild --platform ios --clean
 
+      - name: 🔧 Configure Code Signing
+        run: |
+        # Set provisioning profile ONLY for LetterLoom target
+        sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ""/PROVISIONING_PROFILE_SPECIFIER = "0891c2ca-63f5-4a05-831e-be27bc4d3d7d"/' ios/LetterLoom.xcodeproj/project.pbxproj
+
       - name: 🔨 Build iOS App
         run: |
           xcodebuild -workspace ios/LetterLoom.xcworkspace \
@@ -73,7 +78,6 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="${{ secrets.EXPO_TEAM_ID }}" \
             CODE_SIGN_IDENTITY="iPhone Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="0891c2ca-63f5-4a05-831e-be27bc4d3d7d" \
             ONLY_ACTIVE_ARCH=NO
 
       - name: 📦 Export IPA
