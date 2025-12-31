@@ -65,7 +65,7 @@ jobs:
       - name: 🔧 Configure Code Signing
         run: |
         # Set provisioning profile ONLY for LetterLoom target
-        sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ""/PROVISIONING_PROFILE_SPECIFIER = "0891c2ca-63f5-4a05-831e-be27bc4d3d7d"/' ios/LetterLoom.xcodeproj/project.pbxproj
+        sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = ""/PROVISIONING_PROFILE_SPECIFIER = "0891c2ca-63f5-4a05-831e-be27bc4d3d7d"/' ios/LetterLoom.xcodeproj/project.pbxproj
 
       - name: 🔨 Build iOS App
         run: |
