@@ -1,92 +1,361 @@
-name: React Native CI/CD
+# ============================================================================
+# iOS BUILD SECRETS DOCUMENTATION (Linux-friendly)
+# ============================================================================
+# This workflow builds iOS IPAs without requiring macOS or EAS cloud builds.
+# It supports two build types:
+#   1. Ad-Hoc builds (automatic on push to main) - for testing on registered devices
+#   2. App Store builds (manual trigger) - for TestFlight/App Store submission
+#
+# WORKFLOW TRIGGERS:
+# ------------------
+# - Push to main: Automatically builds ad-hoc IPA
+# - Manual dispatch: Go to Actions tab → Run workflow → Choose build type
+#
+# NOTE: These instructions are designed for developers on Linux/Windows
+# without access to macOS or Xcode.
+#
+# ============================================================================
+# REQUIRED SECRETS (for Ad-Hoc builds):
+# ============================================================================
+#
+# 1. IOS_CERTIFICATE_BASE64
+#    Description: Base64-encoded P12 distribution certificate
+#    How to generate (WITHOUT macOS):
+#      a. Go to https://developer.apple.com/account/resources/certificates
+#      b. Click "+" to create a new certificate
+#      c. Select "Apple Distribution" (under "Software")
+#      d. Generate a Certificate Signing Request (CSR) on Linux:
+#         openssl genrsa -out private.key 2048
+#         openssl req -new -key private.key -out request.csr \
+#           -subj "/emailAddress=your@email.com, CN=Your Name, C=US"
+#      e. Upload the request.csr file to Apple's certificate creation page
+#      f. Download the resulting certificate (ios_distribution.cer)
+#      g. Convert .cer to .pem:
+#         openssl x509 -in ios_distribution.cer -inform DER \
+#           -out certificate.pem -outform PEM
+#      h. Combine certificate and private key into P12 (set a password):
+#         openssl pkcs12 -export -out certificate.p12 \
+#           -inkey private.key -in certificate.pem \
+#           -password pass:YourSecurePassword123
+#      i. Convert to base64:
+#         base64 -w 0 certificate.p12 > certificate_base64.txt
+#         # or: base64 certificate.p12 | tr -d '\n' > certificate_base64.txt
+#      j. Copy the contents of certificate_base64.txt as the secret value
+#      k. IMPORTANT: Save private.key securely - you'll need it if you
+#         regenerate the certificate
+#
+# 2. IOS_CERTIFICATE_PASSWORD
+#    Description: Password used when creating the P12 certificate
+#    How to generate:
+#      - This is the password you set in step 1.h above
+#        (e.g., "YourSecurePassword123")
+#      - Must be strong and stored securely
+#
+# 3. IOS_PROVISION_PROFILE_BASE64
+#    Description: Base64-encoded Ad-Hoc provisioning profile
+#    How to generate:
+#      a. Go to https://developer.apple.com/account/resources/profiles
+#      b. Click "+" to create a new profile
+#      c. Select "Ad Hoc" distribution type
+#      d. Select your App ID (e.g., com.letterloom.app)
+#      e. **CRITICAL**: Select your "Apple Distribution" certificate
+#         (the one you just created - should show "Apple Distribution: Your Name")
+#      f. Select the devices you want to install the app on
+#         - You must register device UDIDs first at:
+#           https://developer.apple.com/account/resources/devices
+#         - To find iPhone UDID: Connect to computer, use iTunes/Finder
+#           or use apps like "UDID Finder" from App Store
+#      g. Name the profile (e.g., "LetterLoom AdHoc") and click "Generate"
+#      h. Download the .mobileprovision file
+#      i. Convert to base64 on Linux:
+#         base64 -w 0 profile.mobileprovision > profile_base64.txt
+#         # or: base64 profile.mobileprovision | tr -d '\n' > profile_base64.txt
+#      j. Copy the contents of profile_base64.txt as the secret value
+#
+# 4. APPLE_TEAM_ID
+#    Description: Your Apple Developer Team ID
+#    How to find:
+#      a. Go to https://developer.apple.com/account
+#      b. Look for "Team ID" near your name in the top-right corner
+#      c. OR extract from provisioning profile on Linux:
+#         grep -A 1 'TeamIdentifier' profile.mobileprovision | grep string | \
+#         sed 's/.*<string>\(.*\)<\/string>.*/\1/'
+#      Value format: 10-character alphanumeric (e.g., 6XBQPB83GR)
+#
+# ============================================================================
+# ADDITIONAL SECRETS (only needed for App Store builds):
+# ============================================================================
+#
+# 5. IOS_APPSTORE_PROFILE_BASE64
+#    Description: Base64-encoded App Store provisioning profile
+#    How to generate:
+#      a. Go to https://developer.apple.com/account/resources/profiles
+#      b. Click "+" to create a new profile
+#      c. Select "App Store" distribution type (NOT Ad Hoc)
+#      d. Select your App ID (e.g., com.letterloom.app)
+#      e. Select the SAME "Apple Distribution" certificate from step 1
+#      f. Name the profile (e.g., "LetterLoom AppStore") and click "Generate"
+#      g. Download the .mobileprovision file
+#      h. Convert to base64 on Linux:
+#         base64 -w 0 appstore_profile.mobileprovision > appstore_profile_base64.txt
+#      i. Copy the contents as the secret value
+#
+# 6. APP_STORE_CONNECT_API_KEY_ID
+#    Description: App Store Connect API Key ID
+#    How to generate:
+#      a. Go to https://appstoreconnect.apple.com/access/integrations/api
+#      b. Click "Keys" tab under "Integrations"
+#      c. Click "+" to generate a new key
+#      d. Name it (e.g., "GitHub Actions")
+#      e. Set Access to "Admin" or "App Manager"
+#      f. Click "Generate"
+#      g. Copy the Key ID (e.g., ABC123XYZ) - this is your secret value
+#      h. Download the .p8 file (you can only download once - save it!)
+#
+# 7. APP_STORE_CONNECT_API_KEY_BASE64
+#    Description: Base64-encoded App Store Connect API Key (.p8 file)
+#    How to generate:
+#      a. Use the .p8 file downloaded in step 6.h
+#      b. Convert to base64 on Linux:
+#         base64 -w 0 AuthKey_ABC123XYZ.p8 > api_key_base64.txt
+#      c. Copy the contents as the secret value
+#
+# 8. APP_STORE_CONNECT_ISSUER_ID
+#    Description: App Store Connect API Issuer ID
+#    How to find:
+#      a. On the same API Keys page from step 6
+#      b. Look for "Issuer ID" at the top of the page
+#      c. It's a UUID format (e.g., 12345678-1234-1234-1234-123456789012)
+#      d. Copy this as the secret value
+#
+# ============================================================================
+# WORKFLOW BEHAVIOR:
+# ============================================================================
+#
+# AUTOMATIC BUILDS (push to main):
+# --------------------------------
+# - Builds Ad-Hoc IPA for device testing
+# - Uses IOS_PROVISION_PROFILE_BASE64 (ad-hoc profile)
+# - Does NOT increment build number
+# - Does NOT upload to TestFlight
+# - IPA available as GitHub Actions artifact
+#
+# MANUAL APP STORE BUILD (workflow_dispatch):
+# -------------------------------------------
+# - Go to Actions tab → "iOS Build" → "Run workflow"
+# - Select "appstore" from dropdown
+# - Automatically increments build number in Info.plist
+# - Commits build number change back to repo
+# - Uses IOS_APPSTORE_PROFILE_BASE64 (app store profile)
+# - Builds App Store IPA
+# - Uploads to TestFlight automatically
+# - IPA available as GitHub Actions artifact
+#
+# MANUAL AD-HOC BUILD (workflow_dispatch):
+# ----------------------------------------
+# - Same as automatic build, just triggered manually
+# - Useful for testing without pushing to main
+#
+# ============================================================================
+# LINUX-SPECIFIC TIPS:
+# ============================================================================
+# - Install OpenSSL: sudo apt-get install openssl (Ubuntu/Debian)
+#                    sudo yum install openssl (CentOS/RHEL)
+# - base64 command: Use -w 0 flag to prevent line wrapping
+#                   Or use: tr -d '\n' to remove newlines
+# - Viewing .mobileprovision contents:
+#   openssl smime -inform der -verify -noverify -in profile.mobileprovision
+# - Extracting provisioning profile UUID:
+#   grep -A 1 'UUID' profile.mobileprovision | grep string | \
+#   sed 's/.*<string>\(.*\)<\/string>.*/\1/'
+# - Extracting Team ID from profile:
+#   grep -A 1 'TeamIdentifier' profile.mobileprovision | grep string | \
+#   sed 's/.*<string>\(.*\)<\/string>.*/\1/'
+#
+# ============================================================================
+# IMPORTANT NOTES:
+# ============================================================================
+# - Use the SAME certificate (IOS_CERTIFICATE_BASE64) for both profiles
+# - The certificate MUST be included in BOTH provisioning profiles
+# - If you regenerate the certificate, regenerate BOTH profiles
+# - Keep your private.key file from step 1.d - you may need it later
+# - Ad-hoc provisioning profiles are limited to 100 devices maximum
+# - Provisioning profiles expire after 1 year and must be renewed
+# - Certificates expire after 1 year and must be renewed
+# - Keep your IOS_CERTIFICATE_PASSWORD secure - anyone with the P12 file
+#   and password can sign apps as you
+# - NEVER commit private.key, certificate.p12, or .mobileprovision files
+#   to your repository
+# - Build number auto-increment commits with [skip ci] to avoid infinite loops
+#
+# ============================================================================
+# FILE STRUCTURE AFTER SETUP:
+# ============================================================================
+# You should have these files locally (DO NOT COMMIT THEM):
+#   private.key                    - Your private key (KEEP SECURE)
+#   request.csr                    - Certificate signing request
+#   ios_distribution.cer           - Apple's signed certificate
+#   certificate.pem                - PEM format certificate
+#   certificate.p12                - PKCS12 bundle (cert + private key)
+#   certificate_base64.txt         - Base64 encoded P12 (for GitHub secret)
+#   profile.mobileprovision        - Ad-hoc provisioning profile
+#   profile_base64.txt             - Base64 encoded ad-hoc profile
+#   appstore_profile.mobileprovision - App Store provisioning profile
+#   appstore_profile_base64.txt    - Base64 encoded app store profile
+#   AuthKey_ABC123XYZ.p8           - App Store Connect API key
+#   api_key_base64.txt             - Base64 encoded API key
+#
+# ============================================================================
+# TROUBLESHOOTING:
+# ============================================================================
+# - "Provisioning profile doesn't include signing certificate" error:
+#   → Your cert and profile don't match. Regenerate the provisioning profile
+#     and ensure you select the correct "Apple Distribution" certificate
+# - "Certificate not found" error:
+#   → Verify IOS_CERTIFICATE_BASE64 has no line breaks (use -w 0 or tr -d)
+#   → Make sure you copied the entire base64 string
+# - "Invalid password" error:
+#   → IOS_CERTIFICATE_PASSWORD must match the password from step 1.h
+# - "unable to load private key" during P12 creation:
+#   → Ensure private.key was generated correctly with proper permissions
+# - Export fails with provisioning profile error:
+#   → Verify bundle ID in exportOptions.plist matches your App ID
+#   → Verify provisioning profile UUID is correct
+# - Base64 decode fails:
+#   → Check for extra whitespace or newlines in the base64 string
+#   → Use -w 0 flag or pipe through tr -d '\n'
+# - TestFlight upload fails:
+#   → Ensure app exists in App Store Connect first
+#   → Verify bundle ID matches exactly
+#   → Check API key has proper permissions (Admin or App Manager)
+# - Build number not incrementing:
+#   → Check GitHub Actions has write permissions to push commits
+#   → Go to Settings → Actions → General → Workflow permissions → Read and write
+#
+# ============================================================================
+# RENEWAL PROCESS (when certificates/profiles expire):
+# ============================================================================
+# 1. Certificates expire yearly - revoke old cert and create new one
+# 2. Use the SAME private.key file if you still have it, or generate new CSR
+# 3. Download new .cer file and create new P12 following steps above
+# 4. Update IOS_CERTIFICATE_BASE64 secret with new P12
+# 5. Create TWO NEW provisioning profiles (ad-hoc AND app store)
+# 6. Update IOS_PROVISION_PROFILE_BASE64 secret with new ad-hoc profile
+# 7. Update IOS_APPSTORE_PROFILE_BASE64 secret with new app store profile
+# ============================================================================
+
+name: iOS Build
 
 on:
   push:
-    branches: [main, master]
-    paths-ignore:
-      - "**.md"
-      - "LICENSE"
-      - "docs/**"
+    branches: [main]
   workflow_dispatch:
     inputs:
-      buildType:
+      build_type:
+        description: 'Build Type'
+        required: true
         type: choice
-        description: "Build type to run"
-        default: "ios-adhoc"
         options:
-          - ios-adhoc
-          - publish-expo
-          - all
-
-env:
-  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-  NODE_OPTIONS: --openssl-legacy-provider
-  BUILD_TYPE: ${{ github.event.inputs.buildType || 'ios-adhoc' }}
+          - adhoc
+          - appstore
+        default: 'adhoc'
 
 jobs:
-  build-ios:
+  build:
     runs-on: macos-latest
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    
     steps:
-      - name: 🏗 Checkout repository
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🏗 Setup Node.js
+      - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: 'npm'
 
       - name: 📦 Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: 🍎 Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
+      - name: 🎯 Determine Build Type
+        id: build_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.build_type }}" >> $GITHUB_OUTPUT
+          else
+            echo "type=adhoc" >> $GITHUB_OUTPUT
+          fi
 
-      - name: 🔐 Install Apple Certificate
+      - name: 📱 Setup Expo
+        run: npx expo prebuild --platform ios --clean
+
+      - name: 🔐 Import Code Signing Certificate
         uses: apple-actions/import-codesign-certs@v2
         with:
           p12-file-base64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
 
-      - name: 📱 Install Provisioning Profile  
+      - name: 📥 Install Provisioning Profile
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}" | base64 --decode > profile.mobileprovision
-          UUID=$(grep -a -A 1 'UUID' profile.mobileprovision | grep string | sed -e 's/<string>//' -e 's/<\/string>//' | tr -d '\t')
-          cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
-          rm profile.mobileprovision
+          
+          if [ "${{ steps.build_type.outputs.type }}" = "appstore" ]; then
+            echo "${{ secrets.IOS_APPSTORE_PROFILE_BASE64 }}" | base64 -d > \
+              ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          else
+            echo "${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}" | base64 -d > \
+              ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          fi
 
-      - name: 🏗 Run Expo Prebuild
-        run: npx expo prebuild --platform ios --clean
+      - name: 🔧 Get Provisioning Profile UUID
+        id: profile
+        run: |
+          UUID=$(grep -a -A 1 'UUID' ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision | grep string | sed -e 's/<string>//' -e 's/<\/string>//' | tr -d '\t')
+          echo "uuid=$UUID" >> $GITHUB_OUTPUT
+
+      - name: 🔢 Increment Build Number (App Store only)
+        if: steps.build_type.outputs.type == 'appstore'
+        run: |
+          cd ios
+          # Get current build number
+          CURRENT_BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" LetterLoom/Info.plist)
+          # Increment it
+          NEW_BUILD=$((CURRENT_BUILD + 1))
+          # Set new build number
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW_BUILD" LetterLoom/Info.plist
+          echo "Build number incremented from $CURRENT_BUILD to $NEW_BUILD"
+          # Commit the change
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add LetterLoom/Info.plist
+          git commit -m "Bump build number to $NEW_BUILD [skip ci]"
+          git push
 
       - name: 🔧 Install xcodeproj gem
         run: gem install xcodeproj
 
-      - name: 🔧 Configure Code Signing for LetterLoom Target Only
+      - name: 🔧 Configure Code Signing
         run: |
           ruby -r xcodeproj - <<'RUBY'
           project_path = 'ios/LetterLoom.xcodeproj'
           project = Xcodeproj::Project.open(project_path)
-    
+          
           project.targets.each do |target|
             if target.name == 'LetterLoom'
               target.build_configurations.each do |config|
                 if config.name == 'Release'
-                  config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '0891c2ca-63f5-4a05-831e-be27bc4d3d7d'
+                  config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${{ steps.profile.outputs.uuid }}'
                   config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
-                  config.build_settings['DEVELOPMENT_TEAM'] = '6XBQPB83GR'
+                  config.build_settings['DEVELOPMENT_TEAM'] = '${{ secrets.APPLE_TEAM_ID }}'
                   config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Distribution'
                 end
               end
             end
           end
-    
+          
           project.save
           RUBY
-  
+
       - name: 🔨 Build iOS App
         run: |
           xcodebuild -workspace ios/LetterLoom.xcworkspace \
@@ -99,21 +368,27 @@ jobs:
 
       - name: 📦 Export IPA
         run: |
+          if [ "${{ steps.build_type.outputs.type }}" = "appstore" ]; then
+            METHOD="app-store"
+          else
+            METHOD="ad-hoc"
+          fi
+          
           cat > exportOptions.plist << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
               <key>method</key>
-              <string>ad-hoc</string>
+              <string>$METHOD</string>
               <key>teamID</key>
-              <string>${{ secrets.EXPO_TEAM_ID }}</string>
+              <string>${{ secrets.APPLE_TEAM_ID }}</string>
               <key>signingStyle</key>
               <string>manual</string>
               <key>provisioningProfiles</key>
               <dict>
                   <key>com.letterloom.app</key>
-                  <string>0891c2ca-63f5-4a05-831e-be27bc4d3d7d</string>
+                  <string>${{ steps.profile.outputs.uuid }}</string>
               </dict>
           </dict>
           </plist>
@@ -124,9 +399,26 @@ jobs:
             -exportPath build \
             -exportOptionsPlist exportOptions.plist
 
-      - name: 📤 Upload IPA
+      - name: 🔐 Setup App Store Connect API Key
+        if: steps.build_type.outputs.type == 'appstore'
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}" | base64 -d > \
+            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+
+      - name: 🚀 Upload to TestFlight
+        if: steps.build_type.outputs.type == 'appstore'
+        run: |
+          xcrun altool --upload-app \
+            --type ios \
+            --file build/LetterLoom.ipa \
+            --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
+            --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+
+      - name: 📤 Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LetterLoom-AdHoc
-          path: build/*.ipa
+          name: LetterLoom-${{ steps.build_type.outputs.type }}.ipa
+          path: build/LetterLoom.ipa
           retention-days: 30
