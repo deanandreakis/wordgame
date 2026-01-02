@@ -366,19 +366,49 @@ jobs:
         run: |
           UUID=$(grep -a -A 1 'UUID' ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision | grep string | sed -e 's/<string>//' -e 's/<\/string>//' | tr -d '\t')
           echo "uuid=$UUID" >> $GITHUB_OUTPUT
+ 
+      - name: 🔐 Setup App Store Connect API Key
+        if: steps.build_type.outputs.type == 'appstore'
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}" | base64 -d > \
+            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
 
-      - name: 🔢 Increment Build Number (App Store only)
+      - name: 🔍 Get Latest Build Number from App Store Connect
+        if: steps.build_type.outputs.type == 'appstore'
+        id: latest_build
+        run: |
+          # Install jq for JSON parsing if not available
+          brew install jq 2>/dev/null || true
+    
+          # Get latest build info from App Store Connect
+          BUILD_INFO=$(xcrun altool --list-builds \
+            --app-identifier com.letterloom.app \
+            --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
+            --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
+            --output-format json 2>/dev/null || echo '{}')
+    
+          # Extract the highest build number
+          LATEST_BUILD=$(echo "$BUILD_INFO" | jq -r '.builds[0].attributes.version // "0"' 2>/dev/null || echo "0")
+    
+          echo "latest=$LATEST_BUILD" >> $GITHUB_OUTPUT
+          echo "Latest build number in App Store Connect: $LATEST_BUILD"
+
+      - name: 🔢 Set Build Number (App Store only)
         if: steps.build_type.outputs.type == 'appstore'
         run: |
           cd ios
-          # Get current build number
-          CURRENT_BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" LetterLoom/Info.plist)
+    
+          # Get the latest build from App Store Connect
+          LATEST_BUILD=${{ steps.latest_build.outputs.latest }}
+    
           # Increment it
-          NEW_BUILD=$((CURRENT_BUILD + 1))
+          NEW_BUILD=$((LATEST_BUILD + 1))
+    
           # Set new build number
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW_BUILD" LetterLoom/Info.plist
-          echo "Build number incremented from $CURRENT_BUILD to $NEW_BUILD"
-          echo "Note: Build number is $NEW_BUILD for this build"
+          echo "Build number set to $NEW_BUILD (previous: $LATEST_BUILD)"
 
       - name: 🔧 Install xcodeproj gem
         run: gem install xcodeproj
@@ -449,14 +479,6 @@ jobs:
             -archivePath build/LetterLoom.xcarchive \
             -exportPath build \
             -exportOptionsPlist exportOptions.plist
-
-      - name: 🔐 Setup App Store Connect API Key
-        if: steps.build_type.outputs.type == 'appstore'
-        run: |
-          mkdir -p ~/.appstoreconnect/private_keys
-          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}" | base64 -d > \
-            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
-          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
 
       - name: 🚀 Upload to TestFlight
         if: steps.build_type.outputs.type == 'appstore'
