@@ -1,0 +1,57 @@
+name: Test App Store Connect API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    
+    steps:
+      - name: 🔐 Setup App Store Connect API Key
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}" | base64 -d > \
+            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+
+      - name: 🔍 Get Latest Build Number from App Store Connect
+        id: latest_build
+        run: |
+          # Install jq for JSON parsing if not available
+          brew install jq 2>/dev/null || true
+          
+          # Get latest build info from App Store Connect
+          echo "Fetching build information from App Store Connect..."
+          BUILD_INFO=$(xcrun altool --list-builds \
+            --app-identifier com.letterloom.app \
+            --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
+            --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
+            --output-format json 2>&1)
+          
+          echo "Response from App Store Connect:"
+          echo "$BUILD_INFO"
+          
+          # Try different JSON paths to find the build number
+          LATEST_BUILD=$(echo "$BUILD_INFO" | jq -r '
+            if .builds then
+              .builds | map(.attributes.version | tonumber) | max
+            elif .data then
+              .data | map(.attributes.version | tonumber) | max
+            else
+              0
+            end
+          ' 2>/dev/null || echo "0")
+          
+          echo "Parsed build number: $LATEST_BUILD"
+          
+          # If still 0, try to parse as simple list
+          if [ "$LATEST_BUILD" = "0" ] || [ -z "$LATEST_BUILD" ]; then
+            LATEST_BUILD=$(echo "$BUILD_INFO" | jq -r '
+              [.builds[]?.attributes?.version?, .data[]?.attributes?.version?] 
+              | map(tonumber) 
+              | max // 0
+            ' 2>/dev/null || echo "0")
+          fi
+          
+          echo "Final build number: $LATEST_BUILD"
