@@ -78,4 +78,4 @@
       ' 2>/dev/null || echo "2")
     fi
     
-    echo "Latest build number determined: $LATEST_BUILD"
+    echo "Latest build number determined: $LATEST_BUILD
