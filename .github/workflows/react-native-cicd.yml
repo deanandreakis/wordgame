@@ -8,8 +8,7 @@
 #
 # WORKFLOW TRIGGERS:
 # ------------------
-# - Push to main: Automatically builds ad-hoc IPA
-# - Manual dispatch: Go to Actions tab → Run workflow → Choose build type
+# - Manual dispatch only: Go to Actions tab → Run workflow → Choose build type
 #
 # NOTE: These instructions are designed for developers on Linux/Windows
 # without access to macOS or Xcode.
@@ -132,8 +131,10 @@
 # WORKFLOW BEHAVIOR:
 # ============================================================================
 #
-# AUTOMATIC BUILDS (push to main):
-# --------------------------------
+# MANUAL AD-HOC BUILD (workflow_dispatch):
+# ----------------------------------------
+# - Go to Actions tab → "iOS Build" → "Run workflow"
+# - Select "adhoc" from dropdown
 # - Builds Ad-Hoc IPA for device testing
 # - Uses IOS_PROVISION_PROFILE_BASE64 (ad-hoc profile)
 # - Does NOT increment build number
@@ -144,17 +145,13 @@
 # -------------------------------------------
 # - Go to Actions tab → "iOS Build" → "Run workflow"
 # - Select "appstore" from dropdown
-# - Automatically increments build number in Info.plist
+# - Fetches latest build number from TestFlight for current app version
+# - Automatically increments build number
 # - Build number increment is temporary (not committed back to repo)
 # - Uses IOS_APPSTORE_PROFILE_BASE64 (app store profile)
 # - Builds App Store IPA
 # - Uploads to TestFlight automatically
 # - IPA available as GitHub Actions artifact
-#
-# MANUAL AD-HOC BUILD (workflow_dispatch):
-# ----------------------------------------
-# - Same as automatic build, just triggered manually
-# - Useful for testing without pushing to main
 #
 # ============================================================================
 # PERFORMANCE OPTIMIZATIONS:
@@ -163,7 +160,6 @@
 #   - Caches node_modules (saves 1-3 min)
 #   - Caches CocoaPods (saves 2-5 min)
 #   - Caches Xcode DerivedData (saves 2-4 min on incremental builds)
-#   - Parallel pod installation
 #   - Parallel Xcode build targets
 #
 # Expected build times:
@@ -201,8 +197,8 @@
 #   and password can sign apps as you
 # - NEVER commit private.key, certificate.p12, or .mobileprovision files
 #   to your repository
-# - Build number auto-increment commits with [skip ci] to avoid infinite loops
-# - GitHub Actions must have "Read and write permissions" enabled (see above)
+# - Build number is automatically fetched from TestFlight and incremented
+# - The app version (CFBundleShortVersionString) comes from app.json
 #
 # ============================================================================
 # FILE STRUCTURE AFTER SETUP:
@@ -244,11 +240,9 @@
 #   → Ensure app exists in App Store Connect first
 #   → Verify bundle ID matches exactly
 #   → Check API key has proper permissions (Admin or App Manager)
-# - Build number not incrementing:
-#   → Check GitHub Actions has write permissions (see REPOSITORY SETTINGS above)
-#   → Verify the commit isn't being blocked by branch protection rules
-# - Permission denied when pushing build number:
-#   → Enable "Read and write permissions" in repo settings (see above)
+# - "Bundle version must be higher than previously uploaded" error:
+#   → The workflow automatically handles this by fetching latest build number
+#   → If this still occurs, check that your app.json version matches TestFlight
 # - Cache not working / builds still slow:
 #   → First run after adding cache will be slow (building cache)
 #   → Check cache is being restored in build logs
@@ -364,7 +358,7 @@ jobs:
         run: |
           UUID=$(grep -a -A 1 'UUID' ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision | grep string | sed -e 's/<string>//' -e 's/<\/string>//' | tr -d '\t')
           echo "uuid=$UUID" >> $GITHUB_OUTPUT
- 
+
       - name: 🔐 Setup App Store Connect API Key
         if: steps.build_type.outputs.type == 'appstore'
         run: |
@@ -378,80 +372,82 @@ jobs:
         id: latest_build
         run: |
           brew install jq 2>/dev/null || true
-
+          
           pip3 install --break-system-packages PyJWT cryptography
-
+          
           echo "Using App Store Connect API to get build number..."
-
+          
           # Get app version from app.json
           if [ -f "app.json" ]; then
-          APP_VERSION=$(jq -r '.expo.version // "1.0.0"' app.json)
+            APP_VERSION=$(jq -r '.expo.version // "1.0.0"' app.json)
           else
-          APP_VERSION="1.0.0"
+            APP_VERSION="1.0.0"
           fi
-
+          
           echo "App version: $APP_VERSION"
-
+          
           cat > generate_jwt.py << 'EOF'
           import jwt
           import time
           import sys
-
+          
           api_key_id = sys.argv[1]
           issuer_id = sys.argv[2]
           key_file = sys.argv[3]
-
+          
           with open(key_file, 'r') as f:
-          private_key = f.read()
-
+              private_key = f.read()
+          
           issued_at = int(time.time())
           expiration = issued_at + 1200
-
+          
           headers = {
-          "alg": "ES256",
-          "kid": api_key_id,
-          "typ": "JWT"
+              "alg": "ES256",
+              "kid": api_key_id,
+              "typ": "JWT"
           }
-
+          
           payload = {
-          "iss": issuer_id,
-          "iat": issued_at,
-          "exp": expiration,
-          "aud": "appstoreconnect-v1"
+              "iss": issuer_id,
+              "iat": issued_at,
+              "exp": expiration,
+              "aud": "appstoreconnect-v1"
           }
-
+          
           token = jwt.encode(payload, private_key, algorithm="ES256", headers=headers)
           print(token)
           EOF
-
+          
           JWT=$(python3 generate_jwt.py "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8)
-
+          
           # Get app ID
           APP_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.letterloom.app")
-
+          
           APP_ID=$(echo "$APP_RESPONSE" | jq -r '.data[0].id // empty')
-
+          
           if [ -z "$APP_ID" ]; then
-          echo "ERROR: Could not find app in App Store Connect"
-          exit 1
+            echo "ERROR: Could not find app in App Store Connect"
+            exit 1
           fi
-
+          
+          echo "App ID: $APP_ID"
+          
           # Get preReleaseVersion ID
           PRERELEASE_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
-          "https://api.appstoreconnect.apple.com/v1/preReleaseVersions?filter[app]=$APP_ID&filter[version]=$APP_VERSION&filter[platform]=IOS")
-
+            "https://api.appstoreconnect.apple.com/v1/preReleaseVersions?filter[app]=$APP_ID&filter[version]=$APP_VERSION&filter[platform]=IOS")
+          
           PRERELEASE_ID=$(echo "$PRERELEASE_RESPONSE" | jq -r '.data[0].id // empty')
-
+          
           if [ -z "$PRERELEASE_ID" ]; then
-          echo "No builds found for version $APP_VERSION yet. Starting with build number 1."
-          LATEST_BUILD="0"
+            echo "No builds found for version $APP_VERSION yet. Starting with build number 1."
+            LATEST_BUILD="0"
           else
-          BUILDS_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
-          "https://api.appstoreconnect.apple.com/v1/builds?filter[preReleaseVersion]=$PRERELEASE_ID&sort=-uploadedDate&limit=1")
-
-          LATEST_BUILD=$(echo "$BUILDS_RESPONSE" | jq -r '.data[0].attributes.version // "0"')
+            BUILDS_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
+              "https://api.appstoreconnect.apple.com/v1/builds?filter[preReleaseVersion]=$PRERELEASE_ID&sort=-uploadedDate&limit=1")
+            
+            LATEST_BUILD=$(echo "$BUILDS_RESPONSE" | jq -r '.data[0].attributes.version // "0"')
           fi
-
+          
           echo "Latest build number in App Store Connect: $LATEST_BUILD"
           echo "latest=$LATEST_BUILD" >> $GITHUB_OUTPUT
 
@@ -459,14 +455,10 @@ jobs:
         if: steps.build_type.outputs.type == 'appstore'
         run: |
           cd ios
-    
-          # Get the latest build from App Store Connect
+          
           LATEST_BUILD=${{ steps.latest_build.outputs.latest }}
-    
-          # Increment it
           NEW_BUILD=$((LATEST_BUILD + 1))
-    
-          # Set new build number
+          
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW_BUILD" LetterLoom/Info.plist
           echo "Build number set to $NEW_BUILD (previous: $LATEST_BUILD)"
 
