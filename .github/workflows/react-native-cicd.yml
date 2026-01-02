@@ -377,21 +377,83 @@ jobs:
         if: steps.build_type.outputs.type == 'appstore'
         id: latest_build
         run: |
-          # Install jq for JSON parsing if not available
           brew install jq 2>/dev/null || true
-    
-          # Get latest build info from App Store Connect
-          BUILD_INFO=$(xcrun altool --list-builds \
-            --app-identifier com.letterloom.app \
-            --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
-            --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
-            --output-format json 2>/dev/null || echo '{}')
-    
-          # Extract the highest build number
-          LATEST_BUILD=$(echo "$BUILD_INFO" | jq -r '.builds[0].attributes.version // "0"' 2>/dev/null || echo "0")
-    
-          echo "latest=$LATEST_BUILD" >> $GITHUB_OUTPUT
+
+          pip3 install --break-system-packages PyJWT cryptography
+
+          echo "Using App Store Connect API to get build number..."
+
+          # Get app version from app.json
+          if [ -f "app.json" ]; then
+          APP_VERSION=$(jq -r '.expo.version // "1.0.0"' app.json)
+          else
+          APP_VERSION="1.0.0"
+          fi
+
+          echo "App version: $APP_VERSION"
+
+          cat > generate_jwt.py << 'EOF'
+          import jwt
+          import time
+          import sys
+
+          api_key_id = sys.argv[1]
+          issuer_id = sys.argv[2]
+          key_file = sys.argv[3]
+
+          with open(key_file, 'r') as f:
+          private_key = f.read()
+
+          issued_at = int(time.time())
+          expiration = issued_at + 1200
+
+          headers = {
+          "alg": "ES256",
+          "kid": api_key_id,
+          "typ": "JWT"
+          }
+
+          payload = {
+          "iss": issuer_id,
+          "iat": issued_at,
+          "exp": expiration,
+          "aud": "appstoreconnect-v1"
+          }
+
+          token = jwt.encode(payload, private_key, algorithm="ES256", headers=headers)
+          print(token)
+          EOF
+
+          JWT=$(python3 generate_jwt.py "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8)
+
+          # Get app ID
+          APP_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.letterloom.app")
+
+          APP_ID=$(echo "$APP_RESPONSE" | jq -r '.data[0].id // empty')
+
+          if [ -z "$APP_ID" ]; then
+          echo "ERROR: Could not find app in App Store Connect"
+          exit 1
+          fi
+
+          # Get preReleaseVersion ID
+          PRERELEASE_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
+          "https://api.appstoreconnect.apple.com/v1/preReleaseVersions?filter[app]=$APP_ID&filter[version]=$APP_VERSION&filter[platform]=IOS")
+
+          PRERELEASE_ID=$(echo "$PRERELEASE_RESPONSE" | jq -r '.data[0].id // empty')
+
+          if [ -z "$PRERELEASE_ID" ]; then
+          echo "No builds found for version $APP_VERSION yet. Starting with build number 1."
+          LATEST_BUILD="0"
+          else
+          BUILDS_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
+          "https://api.appstoreconnect.apple.com/v1/builds?filter[preReleaseVersion]=$PRERELEASE_ID&sort=-uploadedDate&limit=1")
+
+          LATEST_BUILD=$(echo "$BUILDS_RESPONSE" | jq -r '.data[0].attributes.version // "0"')
+          fi
+
           echo "Latest build number in App Store Connect: $LATEST_BUILD"
+          echo "latest=$LATEST_BUILD" >> $GITHUB_OUTPUT
 
       - name: 🔢 Set Build Number (App Store only)
         if: steps.build_type.outputs.type == 'appstore'
