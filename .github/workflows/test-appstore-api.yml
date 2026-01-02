@@ -1,81 +1,81 @@
-- name: 🔍 Get Latest Build Number from App Store Connect
-  id: latest_build
-  run: |
-    # Install jq for JSON parsing if not available
-    brew install jq 2>/dev/null || true
+name: Test App Store Connect API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
     
-    # Get latest build info from App Store Connect
-    echo "Fetching build information from App Store Connect..."
-    
-    # Capture both stdout and stderr
-    BUILD_INFO=$(xcrun altool --list-builds \
-      --app-identifier com.letterloom.app \
-      --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
-      --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
-      --output-format json 2>&1) || {
-        echo "altool command failed with exit code $?"
-        echo "Error output: $BUILD_INFO"
-        echo "Trying alternative approach..."
-      }
-    
-    echo "Response from App Store Connect:"
-    echo "$BUILD_INFO"
-    echo "---"
-    
-    # Check if it's an error message
-    if echo "$BUILD_INFO" | grep -q "ERROR"; then
-      echo "altool returned an error, trying App Store Connect API directly..."
-      
-      # Use App Store Connect API instead
-      ISSUED_AT=$(date +%s)
-      EXPIRATION=$((ISSUED_AT + 1200))
-      
-      # Create JWT token
-      HEADER='{"alg":"ES256","kid":"${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}","typ":"JWT"}'
-      PAYLOAD='{"iss":"${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}","iat":'$ISSUED_AT',"exp":'$EXPIRATION',"aud":"appstoreconnect-v1"}'
-      
-      HEADER_B64=$(echo -n "$HEADER" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
-      PAYLOAD_B64=$(echo -n "$PAYLOAD" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
-      
-      SIGNED=$(echo -n "${HEADER_B64}.${PAYLOAD_B64}" | \
-        openssl dgst -sha256 -sign ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8 | \
-        base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
-      
-      JWT="${HEADER_B64}.${PAYLOAD_B64}.${SIGNED}"
-      
-      # Get app ID
-      echo "Getting App ID..."
-      APP_RESPONSE=$(curl -s -H "Authorization: Bearer $JWT" \
-        "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.letterloom.app")
-      
-      echo "App response:"
-      echo "$APP_RESPONSE" | jq '.' || echo "$APP_RESPONSE"
-      
-      APP_ID=$(echo "$APP_RESPONSE" | jq -r '.data[0].id // empty')
-      echo "App ID: $APP_ID"
-      
-      if [ -z "$APP_ID" ]; then
-        echo "Could not find app in App Store Connect"
-        echo "Using fallback build number: 2"
-        LATEST_BUILD="2"
-      else
-        # Get builds
-        echo "Getting builds for app..."
-        BUILDS_RESPONSE=$(curl -s -H "Authorization: Bearer $JWT" \
-          "https://api.appstoreconnect.apple.com/v1/builds?filter[app]=$APP_ID&sort=-version&limit=1")
-        
-        echo "Builds response:"
-        echo "$BUILDS_RESPONSE" | jq '.' || echo "$BUILDS_RESPONSE"
-        
-        LATEST_BUILD=$(echo "$BUILDS_RESPONSE" | jq -r '.data[0].attributes.version // "2"')
-      fi
-    else
-      # Parse altool response
-      LATEST_BUILD=$(echo "$BUILD_INFO" | jq -r '
-        [.builds[]?.CFBundleVersion?, .builds[]?.version?] 
-        | map(select(. != null) | tonumber) 
-        | max // 2
-      ' 2>/dev/null || echo "2")
-    fi
-    
-    echo "Latest build number determined: $LATEST_BUILD
+    steps:
+      - name: 🔐 Setup App Store Connect API Key
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}" | base64 -d > \
+            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+
+      - name: 🔍 Get Latest Build Number from App Store Connect
+        id: latest_build
+        run: |
+          brew install jq 2>/dev/null || true
+          
+          echo "Fetching build information from App Store Connect..."
+          
+          set +e
+          BUILD_INFO=$(xcrun altool --list-builds \
+            --app-identifier com.letterloom.app \
+            --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
+            --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
+            --output-format json 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          echo "Response from App Store Connect:"
+          echo "$BUILD_INFO"
+          echo "Exit code: $EXIT_CODE"
+          echo "---"
+          
+          if [ $EXIT_CODE -ne 0 ] || echo "$BUILD_INFO" | grep -q "ERROR"; then
+            echo "altool failed, trying App Store Connect API directly..."
+            
+            ISSUED_AT=$(date +%s)
+            EXPIRATION=$((ISSUED_AT + 1200))
+            
+            HEADER='{"alg":"ES256","kid":"${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}","typ":"JWT"}'
+            PAYLOAD='{"iss":"${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}","iat":'$ISSUED_AT',"exp":'$EXPIRATION',"aud":"appstoreconnect-v1"}'
+            
+            HEADER_B64=$(echo -n "$HEADER" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+            PAYLOAD_B64=$(echo -n "$PAYLOAD" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+            
+            SIGNED=$(echo -n "${HEADER_B64}.${PAYLOAD_B64}" | openssl dgst -sha256 -sign ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8 | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+            
+            JWT="${HEADER_B64}.${PAYLOAD_B64}.${SIGNED}"
+            
+            echo "Getting App ID..."
+            APP_RESPONSE=$(curl -s -H "Authorization: Bearer $JWT" "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.letterloom.app")
+            
+            echo "App response:"
+            echo "$APP_RESPONSE" | jq '.' 2>/dev/null || echo "$APP_RESPONSE"
+            
+            APP_ID=$(echo "$APP_RESPONSE" | jq -r '.data[0].id // empty' 2>/dev/null)
+            echo "App ID: $APP_ID"
+            
+            if [ -z "$APP_ID" ]; then
+              echo "Could not find app, using fallback"
+              LATEST_BUILD="2"
+            else
+              echo "Getting builds..."
+              BUILDS_RESPONSE=$(curl -s -H "Authorization: Bearer $JWT" "https://api.appstoreconnect.apple.com/v1/builds?filter[app]=$APP_ID&sort=-version&limit=1")
+              
+              echo "Builds response:"
+              echo "$BUILDS_RESPONSE" | jq '.' 2>/dev/null || echo "$BUILDS_RESPONSE"
+              
+              LATEST_BUILD=$(echo "$BUILDS_RESPONSE" | jq -r '.data[0].attributes.version // "2"' 2>/dev/null || echo "2")
+            fi
+          else
+            echo "Parsing altool response..."
+            LATEST_BUILD=$(echo "$BUILD_INFO" | jq -r '[.builds[]?.CFBundleVersion?, .builds[]?.version?] | map(select(. != null) | tonumber) | max // 2' 2>/dev/null || echo "2")
+          fi
+          
+          echo "Latest build number determined: $LATEST_BUILD"
