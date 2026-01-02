@@ -15,26 +15,6 @@
 # without access to macOS or Xcode.
 #
 # ============================================================================
-# REPOSITORY SETTINGS REQUIRED:
-# ============================================================================
-#
-# ENABLE GITHUB ACTIONS WRITE PERMISSIONS:
-# ----------------------------------------
-# For the build number auto-increment feature to work, GitHub Actions needs
-# permission to commit changes back to your repository.
-#
-# Steps to enable:
-#   1. Go to your repository on GitHub
-#   2. Click "Settings" → "Actions" → "General"
-#   3. Scroll down to "Workflow permissions"
-#   4. Select "Read and write permissions"
-#   5. (Optional) Check "Allow GitHub Actions to create and approve pull requests"
-#   6. Click "Save"
-#
-# Without this setting, App Store builds will fail when trying to commit the
-# incremented build number back to the repository.
-#
-# ============================================================================
 # REQUIRED SECRETS (for Ad-Hoc builds):
 # ============================================================================
 #
@@ -165,7 +145,7 @@
 # - Go to Actions tab → "iOS Build" → "Run workflow"
 # - Select "appstore" from dropdown
 # - Automatically increments build number in Info.plist
-# - Commits build number change back to repo
+# - Build number increment is temporary (not committed back to repo)
 # - Uses IOS_APPSTORE_PROFILE_BASE64 (app store profile)
 # - Builds App Store IPA
 # - Uploads to TestFlight automatically
@@ -398,12 +378,7 @@ jobs:
           # Set new build number
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW_BUILD" LetterLoom/Info.plist
           echo "Build number incremented from $CURRENT_BUILD to $NEW_BUILD"
-          # Commit the change
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add LetterLoom/Info.plist
-          git commit -m "Bump build number to $NEW_BUILD [skip ci]"
-          git push
+          echo "Note: Build number is $NEW_BUILD for this build"
 
       - name: 🔧 Install xcodeproj gem
         run: gem install xcodeproj
