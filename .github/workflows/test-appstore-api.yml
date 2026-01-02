@@ -14,18 +14,10 @@ jobs:
           echo "${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}" | base64 -d > \
             ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
           chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
-          
-          echo "Verifying API key file..."
-          ls -la ~/.appstoreconnect/private_keys/
-          
-          echo "Checking key format..."
-          head -1 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
 
       - name: 🔍 Get Latest Build Number from App Store Connect
         id: latest_build
         run: |
-          set +e  # Don't exit on error so we can see what's happening
-          
           brew install jq 2>/dev/null || true
           
           echo "Using App Store Connect API to get build number..."
@@ -37,55 +29,65 @@ jobs:
           API_KEY_ID="${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}"
           ISSUER_ID="${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
           
-          echo "API Key ID: $API_KEY_ID"
-          echo "Issuer ID: $ISSUER_ID"
-          
           # Create header and payload
           HEADER=$(echo -n '{"alg":"ES256","kid":"'$API_KEY_ID'","typ":"JWT"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
           PAYLOAD=$(echo -n '{"iss":"'$ISSUER_ID'","iat":'$ISSUED_AT',"exp":'$EXPIRATION',"aud":"appstoreconnect-v1"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
-          
-          echo "Header (base64): ${HEADER:0:50}..."
-          echo "Payload (base64): ${PAYLOAD:0:50}..."
           
           # Sign with private key
           SIGNATURE=$(echo -n "${HEADER}.${PAYLOAD}" | \
             openssl dgst -sha256 -sign ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8 -binary | \
             base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
           
-          SIGN_EXIT=$?
-          echo "OpenSSL signature exit code: $SIGN_EXIT"
-          echo "Signature (base64): ${SIGNATURE:0:50}..."
-          
           JWT="${HEADER}.${PAYLOAD}.${SIGNATURE}"
           
-          echo "JWT token generated (length: ${#JWT})"
+          echo "JWT token generated"
           
-          # Get app ID
+          # Get app ID (using --globoff to handle square brackets)
           echo "Fetching app information..."
-          APP_RESPONSE=$(curl -v -H "Authorization: Bearer $JWT" \
-            "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.letterloom.app" 2>&1)
-          
-          CURL_EXIT=$?
-          echo "Curl exit code: $CURL_EXIT"
+          APP_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
+            "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.letterloom.app")
           
           echo "App API Response:"
-          echo "$APP_RESPONSE"
+          echo "$APP_RESPONSE" | jq '.'
           
-          # Try to parse as JSON
-          APP_JSON=$(echo "$APP_RESPONSE" | grep -o '{.*}' | tail -1)
-          
-          if [ -n "$APP_JSON" ]; then
-            echo "Parsed JSON:"
-            echo "$APP_JSON" | jq '.' 2>/dev/null || echo "$APP_JSON"
-            
-            # Check for errors
-            if echo "$APP_JSON" | jq -e '.errors' > /dev/null 2>&1; then
-              echo "Error from API:"
-              echo "$APP_JSON" | jq '.errors'
-            fi
-            
-            APP_ID=$(echo "$APP_JSON" | jq -r '.data[0].id // empty')
-            echo "App ID: $APP_ID"
-          else
-            echo "Could not parse JSON response"
+          # Check for errors
+          if echo "$APP_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+            echo "Error from API:"
+            echo "$APP_RESPONSE" | jq '.errors'
+            exit 1
           fi
+          
+          APP_ID=$(echo "$APP_RESPONSE" | jq -r '.data[0].id // empty')
+          echo "App ID: $APP_ID"
+          
+          if [ -z "$APP_ID" ]; then
+            echo "ERROR: Could not find app in App Store Connect"
+            exit 1
+          fi
+          
+          # Get builds for this app (using --globoff again)
+          echo "Fetching builds for app..."
+          BUILDS_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
+            "https://api.appstoreconnect.apple.com/v1/builds?filter[app]=$APP_ID&sort=-version&limit=5")
+          
+          echo "Builds API Response:"
+          echo "$BUILDS_RESPONSE" | jq '.'
+          
+          # Check for errors
+          if echo "$BUILDS_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+            echo "Error from API:"
+            echo "$BUILDS_RESPONSE" | jq '.errors'
+            exit 1
+          fi
+          
+          # Extract latest build number
+          LATEST_BUILD=$(echo "$BUILDS_RESPONSE" | jq -r '.data[0].attributes.version // "0"')
+          
+          echo "Latest build number: $LATEST_BUILD"
+          
+          if [ "$LATEST_BUILD" = "0" ] || [ "$LATEST_BUILD" = "null" ]; then
+            echo "ERROR: Could not determine latest build number"
+            exit 1
+          fi
+          
+          echo "latest=$LATEST_BUILD" >> $GITHUB_OUTPUT
