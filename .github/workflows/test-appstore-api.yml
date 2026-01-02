@@ -20,29 +20,55 @@ jobs:
         run: |
           brew install jq 2>/dev/null || true
           
+          # Install PyJWT for proper JWT generation
+          pip3 install PyJWT cryptography
+          
           echo "Using App Store Connect API to get build number..."
           
-          # Generate JWT token
-          ISSUED_AT=$(date +%s)
-          EXPIRATION=$((ISSUED_AT + 1200))
+          # Create Python script to generate JWT
+          cat > generate_jwt.py << 'PYTHON_SCRIPT'
+import jwt
+import time
+import sys
+
+api_key_id = sys.argv[1]
+issuer_id = sys.argv[2]
+key_file = sys.argv[3]
+
+# Read private key
+with open(key_file, 'r') as f:
+    private_key = f.read()
+
+# Create JWT
+issued_at = int(time.time())
+expiration = issued_at + 1200
+
+headers = {
+    "alg": "ES256",
+    "kid": api_key_id,
+    "typ": "JWT"
+}
+
+payload = {
+    "iss": issuer_id,
+    "iat": issued_at,
+    "exp": expiration,
+    "aud": "appstoreconnect-v1"
+}
+
+token = jwt.encode(payload, private_key, algorithm="ES256", headers=headers)
+print(token)
+PYTHON_SCRIPT
           
-          API_KEY_ID="${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}"
-          ISSUER_ID="${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
-          
-          # Create header and payload
-          HEADER=$(echo -n '{"alg":"ES256","kid":"'$API_KEY_ID'","typ":"JWT"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
-          PAYLOAD=$(echo -n '{"iss":"'$ISSUER_ID'","iat":'$ISSUED_AT',"exp":'$EXPIRATION',"aud":"appstoreconnect-v1"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
-          
-          # Sign with private key
-          SIGNATURE=$(echo -n "${HEADER}.${PAYLOAD}" | \
-            openssl dgst -sha256 -sign ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8 -binary | \
-            base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
-          
-          JWT="${HEADER}.${PAYLOAD}.${SIGNATURE}"
+          # Generate JWT using Python
+          JWT=$(python3 generate_jwt.py \
+            "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" \
+            "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" \
+            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8)
           
           echo "JWT token generated"
           
-          # Get app ID (using --globoff to handle square brackets)
+          # Get app ID
           echo "Fetching app information..."
           APP_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
             "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.letterloom.app")
@@ -65,7 +91,7 @@ jobs:
             exit 1
           fi
           
-          # Get builds for this app (using --globoff again)
+          # Get builds for this app
           echo "Fetching builds for app..."
           BUILDS_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
             "https://api.appstoreconnect.apple.com/v1/builds?filter[app]=$APP_ID&sort=-version&limit=5")
