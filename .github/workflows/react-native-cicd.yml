@@ -15,6 +15,26 @@
 # without access to macOS or Xcode.
 #
 # ============================================================================
+# REPOSITORY SETTINGS REQUIRED:
+# ============================================================================
+#
+# ENABLE GITHUB ACTIONS WRITE PERMISSIONS:
+# ----------------------------------------
+# For the build number auto-increment feature to work, GitHub Actions needs
+# permission to commit changes back to your repository.
+#
+# Steps to enable:
+#   1. Go to your repository on GitHub
+#   2. Click "Settings" → "Actions" → "General"
+#   3. Scroll down to "Workflow permissions"
+#   4. Select "Read and write permissions"
+#   5. (Optional) Check "Allow GitHub Actions to create and approve pull requests"
+#   6. Click "Save"
+#
+# Without this setting, App Store builds will fail when trying to commit the
+# incremented build number back to the repository.
+#
+# ============================================================================
 # REQUIRED SECRETS (for Ad-Hoc builds):
 # ============================================================================
 #
@@ -103,7 +123,7 @@
 # 6. APP_STORE_CONNECT_API_KEY_ID
 #    Description: App Store Connect API Key ID
 #    How to generate:
-#      a. Go to https://appstoreconnect.apple.com/access/integrations/api
+#      a. Go to https://appstoreconnect.apple.com/access/api
 #      b. Click "Keys" tab under "Integrations"
 #      c. Click "+" to generate a new key
 #      d. Name it (e.g., "GitHub Actions")
@@ -157,6 +177,21 @@
 # - Useful for testing without pushing to main
 #
 # ============================================================================
+# PERFORMANCE OPTIMIZATIONS:
+# ============================================================================
+# This workflow includes several performance optimizations:
+#   - Caches node_modules (saves 1-3 min)
+#   - Caches CocoaPods (saves 2-5 min)
+#   - Caches Xcode DerivedData (saves 2-4 min on incremental builds)
+#   - Parallel pod installation
+#   - Parallel Xcode build targets
+#
+# Expected build times:
+#   - First run (no cache): ~15-25 minutes
+#   - Subsequent runs (with cache): ~8-12 minutes
+#   - Build-only changes: ~5-8 minutes
+#
+# ============================================================================
 # LINUX-SPECIFIC TIPS:
 # ============================================================================
 # - Install OpenSSL: sudo apt-get install openssl (Ubuntu/Debian)
@@ -187,6 +222,7 @@
 # - NEVER commit private.key, certificate.p12, or .mobileprovision files
 #   to your repository
 # - Build number auto-increment commits with [skip ci] to avoid infinite loops
+# - GitHub Actions must have "Read and write permissions" enabled (see above)
 #
 # ============================================================================
 # FILE STRUCTURE AFTER SETUP:
@@ -229,8 +265,14 @@
 #   → Verify bundle ID matches exactly
 #   → Check API key has proper permissions (Admin or App Manager)
 # - Build number not incrementing:
-#   → Check GitHub Actions has write permissions to push commits
-#   → Go to Settings → Actions → General → Workflow permissions → Read and write
+#   → Check GitHub Actions has write permissions (see REPOSITORY SETTINGS above)
+#   → Verify the commit isn't being blocked by branch protection rules
+# - Permission denied when pushing build number:
+#   → Enable "Read and write permissions" in repo settings (see above)
+# - Cache not working / builds still slow:
+#   → First run after adding cache will be slow (building cache)
+#   → Check cache is being restored in build logs
+#   → Ensure Podfile.lock and package-lock.json are committed
 #
 # ============================================================================
 # RENEWAL PROCESS (when certificates/profiles expire):
@@ -274,6 +316,14 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: 📦 Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: 📦 Install dependencies
         run: npm ci
 
@@ -286,8 +336,32 @@ jobs:
             echo "type=adhoc" >> $GITHUB_OUTPUT
           fi
 
-      - name: 📱 Setup Expo
+      - name: 📱 Generate iOS Native Project (Expo Prebuild)
         run: npx expo prebuild --platform ios --clean
+
+      - name: 🔧 Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: 📦 Install Pods
+        run: |
+          cd ios
+          pod install --jobs 4
+
+      - name: 🔧 Cache Xcode DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-deriveddata-${{ hashFiles('ios/**/*.swift', 'ios/**/*.m', 'ios/**/*.h') }}
+          restore-keys: |
+            ${{ runner.os }}-deriveddata-
 
       - name: 🔐 Import Code Signing Certificate
         uses: apple-actions/import-codesign-certs@v2
@@ -364,7 +438,9 @@ jobs:
             -destination generic/platform=iOS \
             -archivePath build/LetterLoom.xcarchive \
             archive \
-            ONLY_ACTIVE_ARCH=NO
+            ONLY_ACTIVE_ARCH=NO \
+            -parallelizeTargets \
+            -jobs 4
 
       - name: 📦 Export IPA
         run: |
@@ -421,4 +497,4 @@ jobs:
         with:
           name: LetterLoom-${{ steps.build_type.outputs.type }}.ipa
           path: build/LetterLoom.ipa
-          retention-days: 30
+          retention-days: 7
