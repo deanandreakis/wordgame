@@ -353,7 +353,7 @@ jobs:
       - name: 📦 Install Pods
         run: |
           cd ios
-          pod install --jobs 4
+          pod install
 
       - name: 🔧 Cache Xcode DerivedData
         uses: actions/cache@v4
