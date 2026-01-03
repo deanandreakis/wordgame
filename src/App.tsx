@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {StatusBar, View, Text, TouchableOpacity, Alert} from 'react-native';
+import {StatusBar, View, Text, TouchableOpacity, Alert, Platform} from 'react-native';
 import {MenuScreen} from './screens/MenuScreen';
 import {LevelSelectScreen} from './screens/LevelSelectScreen';
 import {GameScreen} from './screens/GameScreen';
@@ -7,7 +7,7 @@ import {ShopScreen} from './screens/ShopScreen';
 import {HelpScreen} from './screens/HelpScreen';
 import {LogScreen} from './screens/LogScreen';
 import {Level, UserProfile} from './types/game';
-import {GameCenterService} from 'expo-game-center';
+import ExpoGameCenter from 'expo-game-center';
 import {
   GAMECENTER_LEADERBOARDS,
   GAMECENTER_ACHIEVEMENTS,
@@ -30,35 +30,14 @@ import './utils/logCapture';
 
 type Screen = 'menu' | 'levelSelect' | 'game' | 'leaderboard' | 'shop' | 'help' | 'logs';
 
-// Initialize GameCenterService with configuration
-const gameCenterService = new GameCenterService({
-  leaderboards: {
-    alltime: GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
-    level: GAMECENTER_LEADERBOARDS.HIGHEST_LEVEL,
-    words: GAMECENTER_LEADERBOARDS.TOTAL_WORDS,
-  },
-  achievements: {
-    complete10: GAMECENTER_ACHIEVEMENTS.COMPLETE_10_LEVELS,
-    complete20: GAMECENTER_ACHIEVEMENTS.COMPLETE_20_LEVELS,
-    complete40: GAMECENTER_ACHIEVEMENTS.COMPLETE_40_LEVELS,
-    complete60: GAMECENTER_ACHIEVEMENTS.COMPLETE_60_LEVELS,
-    complete80: GAMECENTER_ACHIEVEMENTS.COMPLETE_80_LEVELS,
-    score10k: GAMECENTER_ACHIEVEMENTS.SCORE_10000,
-    score50k: GAMECENTER_ACHIEVEMENTS.SCORE_50000,
-    score100k: GAMECENTER_ACHIEVEMENTS.SCORE_100000,
-    words100: GAMECENTER_ACHIEVEMENTS.FIND_100_WORDS,
-    words500: GAMECENTER_ACHIEVEMENTS.FIND_500_WORDS,
-    words1000: GAMECENTER_ACHIEVEMENTS.FIND_1000_WORDS,
-  },
-  enableLogging: true, // Enable internal GameCenterService logging
-});
+// Note: We use the native module directly instead of GameCenterService
+// because the service's authentication is broken (hangs forever)
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('menu');
   const [currentLevel, setCurrentLevel] = useState<Level | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isGameCenterReady, setIsGameCenterReady] = useState(false);
 
   useEffect(() => {
     // Safety timeout: force initialization after 5 seconds
@@ -148,58 +127,20 @@ const App: React.FC = () => {
 
   const initializeApp = async () => {
     try {
-      // Initialize GameCenter service
-      console.log('[App] Initializing GameCenter service...');
-      try {
-        await gameCenterService.initialize();
-        console.log('[App] GameCenter initialized, now authenticating...');
-
-        // Add timeout to authenticate call
-        const authPromise = gameCenterService.authenticate();
-        const timeoutPromise = new Promise<boolean>((resolve) => {
-          setTimeout(() => {
-            console.warn('[App] Authentication timeout after 3 seconds');
-            resolve(false);
-          }, 3000);
-        });
-
-        const authenticated = await Promise.race([authPromise, timeoutPromise]);
-        console.log('[App] GameCenter authentication result:', authenticated);
-
-        if (authenticated) {
-          const player = await gameCenterService.getPlayer();
-          console.log('[App] Player info:', player);
-          if (player) {
-            setIsGameCenterReady(true);
-            console.log('[App] GameCenter ready! Player:', player);
-          } else {
-            console.warn('[App] Authenticated but no player returned');
-          }
-        } else {
-          console.log('[App] GameCenter authentication failed or cancelled');
-          // Check status to see what went wrong
-          const status = gameCenterService.getStatus();
-          console.log('[App] GameCenter status:', status);
-        }
-      } catch (error) {
-        console.error('[App] Failed to initialize GameCenter:', error);
-      }
+      // Don't bother initializing/authenticating GameCenter here
+      // The library's authentication is broken (hangs forever)
+      // Instead, we'll just try to use GameCenter features directly
+      // If user is logged in, it works. If not, GameCenter prompts for login.
+      console.log('[App] Skipping GameCenter authentication (will authenticate on-demand)');
 
       // Initialize user ID
       let userId: string;
       let displayName: string;
 
-      // Use GameCenter player if available, otherwise generate local ID
-      const player = await gameCenterService.getPlayer().catch(() => null);
-      if (player) {
-        userId = player.playerID;
-        displayName = player.displayName;
-        console.log('[App] Using GameCenter player:', {userId, displayName});
-      } else {
-        userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        displayName = `Player${Math.floor(Math.random() * 10000)}`;
-        console.log('[App] Using local player ID (GameCenter not available):', {userId, displayName});
-      }
+      // Always use local ID for now - GameCenter player info will be retrieved on-demand
+      userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      displayName = `Player${Math.floor(Math.random() * 10000)}`;
+      console.log('[App] Using local player ID:', {userId, displayName});
 
       // Load or create user profile
       let profile = await getUserProfile();
@@ -297,69 +238,65 @@ const App: React.FC = () => {
       await saveUserProfile(updatedProfile);
 
       // Submit scores to GameCenter leaderboards
-      if (isGameCenterReady) {
+      if (Platform.OS === 'ios' && ExpoGameCenter) {
         try {
-          await gameCenterService.submitScore(updatedProfile.totalScore, 'alltime');
-          await gameCenterService.submitScore(updatedProfile.highestLevel, 'level');
-          await gameCenterService.submitScore(updatedProfile.totalWordsFound, 'words');
+          await ExpoGameCenter.submitScore(updatedProfile.totalScore, GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
+          await ExpoGameCenter.submitScore(updatedProfile.highestLevel, GAMECENTER_LEADERBOARDS.HIGHEST_LEVEL);
+          await ExpoGameCenter.submitScore(updatedProfile.totalWordsFound, GAMECENTER_LEADERBOARDS.TOTAL_WORDS);
           console.log('[App] Scores submitted to GameCenter successfully');
         } catch (error) {
           console.warn('[App] Could not submit scores to GameCenter:', error);
         }
-      } else {
-        console.log('[App] GameCenter not ready, skipping score submission');
       }
 
       // Check and report achievements
-      if (isGameCenterReady) {
+      if (Platform.OS === 'ios' && ExpoGameCenter) {
         try {
           const completedCount = updatedProfile.completedLevels.length;
 
           // Level completion achievements
           if (completedCount >= 10) {
-            await gameCenterService.reportAchievement('complete10', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_10_LEVELS, 100);
           }
           if (completedCount >= 20) {
-            await gameCenterService.reportAchievement('complete20', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_20_LEVELS, 100);
           }
           if (completedCount >= 40) {
-            await gameCenterService.reportAchievement('complete40', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_40_LEVELS, 100);
           }
           if (completedCount >= 60) {
-            await gameCenterService.reportAchievement('complete60', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_60_LEVELS, 100);
           }
           if (completedCount >= 80) {
-            await gameCenterService.reportAchievement('complete80', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_80_LEVELS, 100);
           }
 
           // Score-based achievements
           if (updatedProfile.totalScore >= 10000) {
-            await gameCenterService.reportAchievement('score10k', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.SCORE_10000, 100);
           }
           if (updatedProfile.totalScore >= 50000) {
-            await gameCenterService.reportAchievement('score50k', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.SCORE_50000, 100);
           }
           if (updatedProfile.totalScore >= 100000) {
-            await gameCenterService.reportAchievement('score100k', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.SCORE_100000, 100);
           }
 
           // Word count achievements
           if (updatedProfile.totalWordsFound >= 100) {
-            await gameCenterService.reportAchievement('words100', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.FIND_100_WORDS, 100);
           }
           if (updatedProfile.totalWordsFound >= 500) {
-            await gameCenterService.reportAchievement('words500', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.FIND_500_WORDS, 100);
           }
           if (updatedProfile.totalWordsFound >= 1000) {
-            await gameCenterService.reportAchievement('words1000', 100);
+            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.FIND_1000_WORDS, 100);
           }
 
           console.log('[App] Achievements reported to GameCenter successfully');
         } catch (error) {
           console.warn('[App] Could not report achievements to GameCenter:', error);
         }
-      } else {
-        console.log('[App] GameCenter not ready, skipping achievement reporting');
       }
 
       console.log(
@@ -381,21 +318,24 @@ const App: React.FC = () => {
 
   const handleLeaderboardPress = async () => {
     console.log('[App] Leaderboard button pressed');
-    console.log('[App] GameCenter ready:', isGameCenterReady);
 
-    if (!isGameCenterReady) {
-      Alert.alert(
-        'GameCenter',
-        'Please sign in to GameCenter to view leaderboards.',
-        [{text: 'OK'}]
-      );
+    if (Platform.OS !== 'ios') {
+      Alert.alert('GameCenter', 'GameCenter is only available on iOS', [{text: 'OK'}]);
+      return;
+    }
+
+    if (!ExpoGameCenter) {
+      Alert.alert('GameCenter', 'GameCenter module not available', [{text: 'OK'}]);
       return;
     }
 
     try {
-      console.log('[App] Attempting to show leaderboard: alltime');
-      await gameCenterService.showLeaderboard('alltime');
-      console.log('[App] Leaderboard shown successfully');
+      console.log('[App] Attempting to show leaderboard directly via native module');
+      console.log('[App] Leaderboard ID:', GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
+
+      // Call presentLeaderboard directly - it will handle authentication if needed
+      await ExpoGameCenter.presentLeaderboard(GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
+      console.log('[App] Leaderboard presented successfully');
     } catch (error: any) {
       console.error('[App] Error showing leaderboard:', {
         message: error?.message || 'No message',
