@@ -50,6 +50,7 @@ const gameCenterService = new GameCenterService({
     words500: GAMECENTER_ACHIEVEMENTS.FIND_500_WORDS,
     words1000: GAMECENTER_ACHIEVEMENTS.FIND_1000_WORDS,
   },
+  enableLogging: true, // Enable internal GameCenterService logging
 });
 
 const App: React.FC = () => {
@@ -153,11 +154,21 @@ const App: React.FC = () => {
         await gameCenterService.initialize();
         console.log('[App] GameCenter initialized, now authenticating...');
 
-        const authenticated = await gameCenterService.authenticate();
+        // Add timeout to authenticate call
+        const authPromise = gameCenterService.authenticate();
+        const timeoutPromise = new Promise<boolean>((resolve) => {
+          setTimeout(() => {
+            console.warn('[App] Authentication timeout after 3 seconds');
+            resolve(false);
+          }, 3000);
+        });
+
+        const authenticated = await Promise.race([authPromise, timeoutPromise]);
         console.log('[App] GameCenter authentication result:', authenticated);
 
         if (authenticated) {
           const player = await gameCenterService.getPlayer();
+          console.log('[App] Player info:', player);
           if (player) {
             setIsGameCenterReady(true);
             console.log('[App] GameCenter ready! Player:', player);
@@ -166,6 +177,9 @@ const App: React.FC = () => {
           }
         } else {
           console.log('[App] GameCenter authentication failed or cancelled');
+          // Check status to see what went wrong
+          const status = gameCenterService.getStatus();
+          console.log('[App] GameCenter status:', status);
         }
       } catch (error) {
         console.error('[App] Failed to initialize GameCenter:', error);
