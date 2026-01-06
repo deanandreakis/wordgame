@@ -1,0 +1,13 @@
+name: SSH Debug on macos Runner
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      - name: ssh to macos Runner
+        uses: mxschmitt/action-tmate@v3
+
+    
