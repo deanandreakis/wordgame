@@ -330,10 +330,24 @@ const App: React.FC = () => {
     }
 
     try {
-      console.log('[App] Attempting to show leaderboard directly via native module');
+      console.log('[App] Authenticating with GameCenter first...');
+
+      // CRITICAL: Authenticate FIRST using our fixed authentication method
+      const isAuthenticated = await ExpoGameCenter.authenticateLocalPlayer();
+      console.log('[App] Authentication result:', isAuthenticated);
+
+      if (!isAuthenticated) {
+        Alert.alert(
+          'GameCenter',
+          'Please sign in to GameCenter in Settings to view leaderboards.',
+          [{text: 'OK'}]
+        );
+        return;
+      }
+
+      console.log('[App] Attempting to show leaderboard');
       console.log('[App] Leaderboard ID:', GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
 
-      // Call presentLeaderboard directly - it will handle authentication if needed
       await ExpoGameCenter.presentLeaderboard(GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
       console.log('[App] Leaderboard presented successfully');
     } catch (error: any) {
