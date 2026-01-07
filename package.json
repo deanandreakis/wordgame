@@ -28,7 +28,7 @@
     "expo-constants": "~18.0.12",
     "expo-dev-client": "~6.0.20",
     "expo-font": "~14.0.10",
-    "expo-game-center": "github:deanandreakis/expo-game-center#6c4b476",
+    "expo-game-center": "github:deanandreakis/expo-game-center#eee4bf6",
     "expo-haptics": "~15.0.8",
     "expo-linear-gradient": "~15.0.8",
     "expo-secure-store": "~15.0.8",
