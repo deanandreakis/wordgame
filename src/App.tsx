@@ -330,12 +330,32 @@ const App: React.FC = () => {
     }
 
     try {
-      // Skip authenticateLocalPlayer() - it returns an error even when user IS authenticated
-      // Instead, call presentLeaderboard() directly and let Apple handle auth
-      console.log('[App] Presenting leaderboard directly (no pre-auth check)');
+      // Check if GameCenter is available first
+      console.log('[App] Checking if GameCenter is available...');
+      const isAvailable = await ExpoGameCenter.isGameCenterAvailable();
+      console.log('[App] GameCenter available:', isAvailable);
+
+      if (!isAvailable) {
+        Alert.alert(
+          'GameCenter Not Available',
+          'GameCenter is not available on this device.',
+          [{text: 'OK'}]
+        );
+        return;
+      }
+
+      // Add timeout wrapper to prevent freezing
+      console.log('[App] Presenting leaderboard with 5-second timeout...');
       console.log('[App] Leaderboard ID:', GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
 
-      await ExpoGameCenter.presentLeaderboard(GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
+      const presentPromise = ExpoGameCenter.presentLeaderboard(GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Leaderboard presentation timed out after 5 seconds'));
+        }, 5000);
+      });
+
+      await Promise.race([presentPromise, timeoutPromise]);
       console.log('[App] Leaderboard presented successfully');
     } catch (error: any) {
       console.error('[App] Error showing leaderboard:', {
@@ -344,11 +364,20 @@ const App: React.FC = () => {
         name: error?.name || 'No name',
         fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
       });
-      Alert.alert(
-        'Error',
-        `Failed to show leaderboard: ${error?.message || 'Unknown error'}`,
-        [{text: 'OK'}]
-      );
+
+      if (error?.message?.includes('timeout')) {
+        Alert.alert(
+          'GameCenter Error',
+          'GameCenter leaderboard is not responding. Please ensure you are signed in to GameCenter in Settings.',
+          [{text: 'OK'}]
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          `Failed to show leaderboard: ${error?.message || 'Unknown error'}`,
+          [{text: 'OK'}]
+        );
+      }
     }
   };
 
