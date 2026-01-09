@@ -330,32 +330,37 @@ const App: React.FC = () => {
     }
 
     try {
-      // Check if GameCenter is available first
-      console.log('[App] Checking if GameCenter is available...');
-      const isAvailable = await ExpoGameCenter.isGameCenterAvailable();
-      console.log('[App] GameCenter available:', isAvailable);
+      // CRITICAL: Authenticate FIRST before trying to show leaderboard
+      // The Swift code checks GKLocalPlayer.local.isAuthenticated which might hang
+      console.log('[App] Authenticating first...');
 
-      if (!isAvailable) {
+      const authPromise = ExpoGameCenter.authenticateLocalPlayer();
+      const authTimeout = new Promise<boolean>((_, reject) => {
+        setTimeout(() => reject(new Error('Authentication timeout')), 5000);
+      });
+
+      const isAuthenticated = await Promise.race([authPromise, authTimeout]);
+      console.log('[App] Authentication result:', isAuthenticated);
+
+      if (!isAuthenticated) {
         Alert.alert(
-          'GameCenter Not Available',
-          'GameCenter is not available on this device.',
+          'GameCenter',
+          'Please sign in to GameCenter in Settings to view leaderboards.',
           [{text: 'OK'}]
         );
         return;
       }
 
-      // Add timeout wrapper to prevent freezing
-      console.log('[App] Presenting leaderboard with 5-second timeout...');
+      // Now present leaderboard with timeout wrapper
+      console.log('[App] Presenting leaderboard...');
       console.log('[App] Leaderboard ID:', GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
 
       const presentPromise = ExpoGameCenter.presentLeaderboard(GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
-      const timeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Leaderboard presentation timed out after 5 seconds'));
-        }, 5000);
+      const presentTimeout = new Promise<void>((_, reject) => {
+        setTimeout(() => reject(new Error('Leaderboard presentation timeout')), 5000);
       });
 
-      await Promise.race([presentPromise, timeoutPromise]);
+      await Promise.race([presentPromise, presentTimeout]);
       console.log('[App] Leaderboard presented successfully');
     } catch (error: any) {
       console.error('[App] Error showing leaderboard:', {
@@ -368,7 +373,7 @@ const App: React.FC = () => {
       if (error?.message?.includes('timeout')) {
         Alert.alert(
           'GameCenter Error',
-          'GameCenter leaderboard is not responding. Please ensure you are signed in to GameCenter in Settings.',
+          'GameCenter is not responding. Please ensure you are signed in to GameCenter in Settings.',
           [{text: 'OK'}]
         );
       } else {
