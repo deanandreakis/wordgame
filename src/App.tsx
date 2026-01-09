@@ -330,22 +330,9 @@ const App: React.FC = () => {
     }
 
     try {
-      console.log('[App] Authenticating with GameCenter first...');
-
-      // CRITICAL: Authenticate FIRST using our fixed authentication method
-      const isAuthenticated = await ExpoGameCenter.authenticateLocalPlayer();
-      console.log('[App] Authentication result:', isAuthenticated);
-
-      if (!isAuthenticated) {
-        Alert.alert(
-          'GameCenter',
-          'Please sign in to GameCenter in Settings to view leaderboards.',
-          [{text: 'OK'}]
-        );
-        return;
-      }
-
-      console.log('[App] Attempting to show leaderboard');
+      // Skip authenticateLocalPlayer() - it returns an error even when user IS authenticated
+      // Instead, call presentLeaderboard() directly and let Apple handle auth
+      console.log('[App] Presenting leaderboard directly (no pre-auth check)');
       console.log('[App] Leaderboard ID:', GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
 
       await ExpoGameCenter.presentLeaderboard(GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
