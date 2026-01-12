@@ -298,9 +298,11 @@ jobs:
 
       - name: 📦 Install dependencies
         run: |
-          rm -rf node_modules/expo-game-center
           npm ci
-          npm update expo-game-center --no-save
+          rm -rf node_modules/expo-game-center
+          npm install github:deanandreakis/expo-game-center#fix/promise-resolution-v2 --no-save
+          echo "Verifying expo-game-center installation..."
+          ls -la node_modules/expo-game-center/ios/ | grep -i expo || echo "ERROR: expo-game-center not installed correctly"
 
       - name: 🎯 Determine Build Type
         id: build_type
