@@ -316,6 +316,28 @@ jobs:
       - name: 📱 Generate iOS Native Project (Expo Prebuild)
         run: npx expo prebuild --platform ios --clean
 
+      - name: 🔍 Verify GameCenter Entitlements
+        run: |
+          echo "Checking for entitlements file..."
+          ENTITLEMENTS_FILE=$(find ios -name "*.entitlements" | head -1)
+
+          if [ -z "$ENTITLEMENTS_FILE" ]; then
+            echo "❌ No entitlements file found!"
+            echo "Searching for any plist files that might contain entitlements..."
+            find ios -name "*.plist" -type f
+          else
+            echo "✅ Entitlements file found: $ENTITLEMENTS_FILE"
+            echo "Contents:"
+            cat "$ENTITLEMENTS_FILE"
+
+            # Check for GameCenter entitlement
+            if grep -q "com.apple.developer.game-center" "$ENTITLEMENTS_FILE"; then
+              echo "✅ GameCenter entitlement FOUND in app entitlements"
+            else
+              echo "❌ GameCenter entitlement NOT FOUND in app entitlements"
+            fi
+          fi
+
       - name: 🔧 Cache CocoaPods
         uses: actions/cache@v4
         with:
@@ -358,11 +380,27 @@ jobs:
               ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
           fi
 
-      - name: 🔧 Get Provisioning Profile UUID
+      - name: 🔧 Get Provisioning Profile UUID and Verify Entitlements
         id: profile
         run: |
-          UUID=$(grep -a -A 1 'UUID' ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision | grep string | sed -e 's/<string>//' -e 's/<\/string>//' | tr -d '\t')
+          PROFILE_PATH=~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+
+          UUID=$(grep -a -A 1 'UUID' "$PROFILE_PATH" | grep string | sed -e 's/<string>//' -e 's/<\/string>//' | tr -d '\t')
           echo "uuid=$UUID" >> $GITHUB_OUTPUT
+          echo "Provisioning Profile UUID: $UUID"
+
+          # Check if GameCenter entitlement is in the provisioning profile
+          echo "Checking for GameCenter entitlement in provisioning profile..."
+          if security cms -D -i "$PROFILE_PATH" | grep -q "com.apple.developer.game-center"; then
+            echo "✅ GameCenter entitlement FOUND in provisioning profile"
+          else
+            echo "❌ WARNING: GameCenter entitlement NOT FOUND in provisioning profile!"
+            echo "You need to regenerate the provisioning profile with GameCenter capability enabled"
+          fi
+
+          # Show all entitlements in the profile for debugging
+          echo "All entitlements in provisioning profile:"
+          security cms -D -i "$PROFILE_PATH" | grep -A 20 "<key>Entitlements</key>" | head -30
 
       - name: 🔐 Setup App Store Connect API Key
         if: steps.build_type.outputs.type == 'appstore'
