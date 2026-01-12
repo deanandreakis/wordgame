@@ -57,7 +57,6 @@ module.exports = {
         },
       ],
     ],
-    ],
     extra: {
       eas: {
         projectId: process.env.EXPO_PROJECT_ID || 'your-project-id-here',
