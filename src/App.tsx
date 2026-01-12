@@ -147,34 +147,59 @@ const App: React.FC = () => {
       if (Platform.OS === 'ios') {
         try {
           console.log('[App] Checking GameCenter availability...');
-          const isAvailable = await ExpoGameCenter.isGameCenterAvailable();
 
-          if (isAvailable) {
-            console.log(
-              '[App] GameCenter available, attempting authentication...',
-            );
-            const isAuthenticated =
-              await ExpoGameCenter.authenticateLocalPlayer();
+          // Check if expo-game-center module is available
+          if (
+            typeof ExpoGameCenter !== 'undefined' &&
+            ExpoGameCenter.isGameCenterAvailable
+          ) {
+            const isAvailable = await ExpoGameCenter.isGameCenterAvailable();
 
-            if (isAuthenticated) {
-              const player = await ExpoGameCenter.getLocalPlayer();
-              if (player) {
-                console.log('[App] GameCenter player authenticated:', player);
-                userId = player.playerID;
-                displayName = player.displayName;
-                gameCenterAuthenticated = true;
+            if (isAvailable) {
+              console.log(
+                '[App] GameCenter available, attempting authentication...',
+              );
+
+              // Add timeout for fork version to prevent hanging
+              const authPromise = ExpoGameCenter.authenticateLocalPlayer();
+              const timeoutPromise = new Promise<boolean>(resolve => {
+                setTimeout(() => {
+                  console.warn(
+                    '[App] GameCenter authentication timeout after 5 seconds',
+                  );
+                  resolve(false);
+                }, 5000);
+              });
+
+              const isAuthenticated = await Promise.race([
+                authPromise,
+                timeoutPromise,
+              ]);
+
+              if (isAuthenticated) {
+                const player = await ExpoGameCenter.getLocalPlayer();
+                if (player) {
+                  console.log('[App] GameCenter player authenticated:', player);
+                  userId = player.playerID;
+                  displayName = player.displayName;
+                  gameCenterAuthenticated = true;
+                } else {
+                  console.warn(
+                    '[App] GameCenter authenticated but no player data',
+                  );
+                }
               } else {
-                console.warn(
-                  '[App] GameCenter authenticated but no player data',
+                console.log(
+                  '[App] GameCenter authentication failed or cancelled',
                 );
               }
             } else {
-              console.log(
-                '[App] GameCenter authentication failed or cancelled',
-              );
+              console.log('[App] GameCenter not available on this device');
             }
           } else {
-            console.log('[App] GameCenter not available on this device');
+            console.warn(
+              '[App] expo-game-center module not available or broken',
+            );
           }
         } catch (error) {
           console.warn('[App] GameCenter authentication error:', error);

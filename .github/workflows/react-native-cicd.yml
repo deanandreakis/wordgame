@@ -299,15 +299,24 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           npm ci
-          echo "Dependencies installed successfully"
-          echo "expo-game-center will be handled by plugin system"
+          rm -rf node_modules/expo-game-center
+          npm install github:deanandreakis/expo-game-center#fix/promise-resolution-v2 --no-save
+          echo "Verifying expo-game-center installation..."
+          ls -la node_modules/expo-game-center/ios/ | grep -i expo || echo "ERROR: expo-game-center not installed correctly"
 
       - name: 🔍 Verify expo-game-center Plugin
         run: |
-          echo "Checking expo-game-center plugin status..."
-          npx expo prebuild --platform ios --dry-run 2>&1 | grep -i gamecenter || echo "GameCenter plugin not found in prebuild"
-          echo "Checking final configuration..."
-          npx expo config --type ios | grep -A 5 -B 5 gamecenter || echo "No GameCenter configuration found"
+          echo "Checking expo-game-center fork installation..."
+          if [ -d "node_modules/expo-game-center" ]; then
+            echo "✅ expo-game-center directory found"
+            ls -la node_modules/expo-game-center/
+            echo "Looking for app.plugin.js..."
+            find node_modules/expo-game-center -name "app.plugin.js" -type f
+            echo "Checking package.json for plugin main..."
+            cat node_modules/expo-game-center/package.json | grep -A 5 -B 5 '"main"' || echo "No main field found"
+          else
+            echo "❌ expo-game-center not installed"
+          fi
 
       - name: 🎯 Determine Build Type
         id: build_type

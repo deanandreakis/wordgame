@@ -87,7 +87,22 @@ export const GameCenterService = {
 
     try {
       console.log('[GameCenter] Checking availability...');
-      const available = await GameCenter.isGameCenterAvailable();
+
+      // Add timeout for fork version to prevent hanging
+      const availabilityPromise = GameCenter.isGameCenterAvailable();
+      const timeoutPromise = new Promise<boolean>(resolve => {
+        setTimeout(() => {
+          console.warn(
+            '[GameCenter] isGameCenterAvailable timeout after 2 seconds',
+          );
+          resolve(false);
+        }, 2000);
+      });
+
+      const available = await Promise.race([
+        availabilityPromise,
+        timeoutPromise,
+      ]);
       console.log('[GameCenter] Availability check result:', available);
       return available;
     } catch (error) {
@@ -117,7 +132,17 @@ export const GameCenterService = {
 
     try {
       console.log('[GameCenter] Starting authentication...');
-      const isAuthenticated = await GameCenter.authenticateLocalPlayer();
+
+      // Add timeout for fork version to prevent hanging
+      const authPromise = GameCenter.authenticateLocalPlayer();
+      const timeoutPromise = new Promise<boolean>(resolve => {
+        setTimeout(() => {
+          console.warn('[GameCenter] Authentication timeout after 3 seconds');
+          resolve(false);
+        }, 3000);
+      });
+
+      const isAuthenticated = await Promise.race([authPromise, timeoutPromise]);
 
       if (isAuthenticated) {
         console.log('[GameCenter] Player authenticated successfully');
@@ -152,7 +177,17 @@ export const GameCenterService = {
 
     try {
       console.log('[GameCenter] Getting local player...');
-      const player = await GameCenter.getLocalPlayer();
+
+      // Add timeout for fork version to prevent hanging
+      const playerPromise = GameCenter.getLocalPlayer();
+      const timeoutPromise = new Promise<GameCenterPlayer | null>(resolve => {
+        setTimeout(() => {
+          console.warn('[GameCenter] getLocalPlayer timeout after 2 seconds');
+          resolve(null);
+        }, 2000);
+      });
+
+      const player = await Promise.race([playerPromise, timeoutPromise]);
       console.log('[GameCenter] Got local player:', player);
       return player as GameCenterPlayer;
     } catch (error: any) {
