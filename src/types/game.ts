@@ -14,7 +14,7 @@ export interface Word {
 
 export interface MultiplierPosition {
   position: number; // Index in the 25-tile grid (0-24)
-  value: 2 | 3;     // Multiplier value (2x or 3x)
+  value: 2 | 3; // Multiplier value (2x or 3x)
 }
 
 export interface Level {
@@ -70,10 +70,11 @@ export interface UserProfile {
   achievements: Achievement[];
   purchasedLevels: number[];
   completedLevels: number[]; // Track which levels have been completed
-  lastPackPlayed?: number; // Track last pack the player was in (0=Free, 1=Pack1, 2=Pack2, 3=Pack3)
+  lastPackPlayed?: number; // Track last pack of player was in (0=Free, 1=Pack1, 2=Pack2, 3=Pack3)
   coins: number;
   hasPremium: boolean;
   lastPlayedDate: string;
+  gameCenterAuthenticated?: boolean; // Track if GameCenter authentication succeeded
 }
 
 export interface LeaderboardEntry {

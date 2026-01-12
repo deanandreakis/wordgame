@@ -277,7 +277,7 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-    
+
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -299,10 +299,15 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           npm ci
-          rm -rf node_modules/expo-game-center
-          npm install github:deanandreakis/expo-game-center#fix/promise-resolution-v2 --no-save
-          echo "Verifying expo-game-center installation..."
-          ls -la node_modules/expo-game-center/ios/ | grep -i expo || echo "ERROR: expo-game-center not installed correctly"
+          echo "Dependencies installed successfully"
+          echo "expo-game-center will be handled by plugin system"
+
+      - name: 🔍 Verify expo-game-center Plugin
+        run: |
+          echo "Checking expo-game-center plugin status..."
+          npx expo prebuild --platform ios --dry-run 2>&1 | grep -i gamecenter || echo "GameCenter plugin not found in prebuild"
+          echo "Checking final configuration..."
+          npx expo config --type ios | grep -A 5 -B 5 gamecenter || echo "No GameCenter configuration found"
 
       - name: 🎯 Determine Build Type
         id: build_type
@@ -371,7 +376,7 @@ jobs:
       - name: 📥 Install Provisioning Profile
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          
+
           if [ "${{ steps.build_type.outputs.type }}" = "appstore" ]; then
             echo "${{ secrets.IOS_APPSTORE_PROFILE_BASE64 }}" | base64 -d > \
               ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
@@ -415,72 +420,72 @@ jobs:
         id: latest_build
         run: |
           brew install jq 2>/dev/null || true
-          
+
           pip3 install --break-system-packages PyJWT cryptography
-          
+
           echo "Using App Store Connect API to get build number..."
-          
+
           # Get app version from app.json
           if [ -f "app.json" ]; then
             APP_VERSION=$(jq -r '.expo.version // "1.0.0"' app.json)
           else
             APP_VERSION="1.0.0"
           fi
-          
+
           echo "App version: $APP_VERSION"
-          
+
           cat > generate_jwt.py << 'EOF'
           import jwt
           import time
           import sys
-          
+
           api_key_id = sys.argv[1]
           issuer_id = sys.argv[2]
           key_file = sys.argv[3]
-          
+
           with open(key_file, 'r') as f:
               private_key = f.read()
-          
+
           issued_at = int(time.time())
           expiration = issued_at + 1200
-          
+
           headers = {
               "alg": "ES256",
               "kid": api_key_id,
               "typ": "JWT"
           }
-          
+
           payload = {
               "iss": issuer_id,
               "iat": issued_at,
               "exp": expiration,
               "aud": "appstoreconnect-v1"
           }
-          
+
           token = jwt.encode(payload, private_key, algorithm="ES256", headers=headers)
           print(token)
           EOF
-          
+
           JWT=$(python3 generate_jwt.py "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8)
-          
+
           # Get app ID
           APP_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.letterloom.app")
-          
+
           APP_ID=$(echo "$APP_RESPONSE" | jq -r '.data[0].id // empty')
-          
+
           if [ -z "$APP_ID" ]; then
             echo "ERROR: Could not find app in App Store Connect"
             exit 1
           fi
-          
+
           echo "App ID: $APP_ID"
-          
+
           # Get preReleaseVersion ID
           PRERELEASE_RESPONSE=$(curl -s --globoff -H "Authorization: Bearer $JWT" \
             "https://api.appstoreconnect.apple.com/v1/preReleaseVersions?filter[app]=$APP_ID&filter[version]=$APP_VERSION&filter[platform]=IOS")
-          
+
           PRERELEASE_ID=$(echo "$PRERELEASE_RESPONSE" | jq -r '.data[0].id // empty')
-          
+
           if [ -z "$PRERELEASE_ID" ]; then
             echo "No builds found for version $APP_VERSION yet. Starting with build number 1."
             LATEST_BUILD="0"
@@ -490,7 +495,7 @@ jobs:
             
             LATEST_BUILD=$(echo "$BUILDS_RESPONSE" | jq -r '.data[0].attributes.version // "0"')
           fi
-          
+
           echo "Latest build number in App Store Connect: $LATEST_BUILD"
           echo "latest=$LATEST_BUILD" >> $GITHUB_OUTPUT
 
@@ -498,10 +503,10 @@ jobs:
         if: steps.build_type.outputs.type == 'appstore'
         run: |
           cd ios
-          
+
           LATEST_BUILD=${{ steps.latest_build.outputs.latest }}
           NEW_BUILD=$((LATEST_BUILD + 1))
-          
+
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW_BUILD" LetterLoom/Info.plist
           echo "Build number set to $NEW_BUILD (previous: $LATEST_BUILD)"
 
@@ -513,7 +518,7 @@ jobs:
           ruby -r xcodeproj - <<'RUBY'
           project_path = 'ios/LetterLoom.xcodeproj'
           project = Xcodeproj::Project.open(project_path)
-          
+
           project.targets.each do |target|
             if target.name == 'LetterLoom'
               target.build_configurations.each do |config|
@@ -526,7 +531,7 @@ jobs:
               end
             end
           end
-          
+
           project.save
           RUBY
 
@@ -549,7 +554,7 @@ jobs:
           else
             METHOD="ad-hoc"
           fi
-          
+
           cat > exportOptions.plist << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -569,7 +574,7 @@ jobs:
           </dict>
           </plist>
           EOF
-          
+
           xcodebuild -exportArchive \
             -archivePath build/LetterLoom.xcarchive \
             -exportPath build \

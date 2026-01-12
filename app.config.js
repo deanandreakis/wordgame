@@ -28,6 +28,9 @@ module.exports = {
       config: {
         usesNonExemptEncryption: false,
       },
+      entitlements: {
+        'com.apple.developer.game-center': true,
+      },
     },
     android: {
       adaptiveIcon: {
@@ -44,6 +47,7 @@ module.exports = {
     plugins: [
       'expo-secure-store',
       'expo-font',
+      'expo-game-center',
       [
         'expo-build-properties',
         {
@@ -52,6 +56,7 @@ module.exports = {
           },
         },
       ],
+    ],
     ],
     extra: {
       eas: {

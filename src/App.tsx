@@ -1,5 +1,12 @@
 import React, {useState, useEffect} from 'react';
-import {StatusBar, View, Text, TouchableOpacity, Alert, Platform} from 'react-native';
+import {
+  StatusBar,
+  View,
+  Text,
+  TouchableOpacity,
+  Alert,
+  Platform,
+} from 'react-native';
 import {MenuScreen} from './screens/MenuScreen';
 import {LevelSelectScreen} from './screens/LevelSelectScreen';
 import {GameScreen} from './screens/GameScreen';
@@ -28,7 +35,14 @@ import type {CustomerInfo} from 'react-native-purchases';
 // Import log capture to initialize it early
 import './utils/logCapture';
 
-type Screen = 'menu' | 'levelSelect' | 'game' | 'leaderboard' | 'shop' | 'help' | 'logs';
+type Screen =
+  | 'menu'
+  | 'levelSelect'
+  | 'game'
+  | 'leaderboard'
+  | 'shop'
+  | 'help'
+  | 'logs';
 
 // Note: We use the native module directly instead of GameCenterService
 // because the service's authentication is broken (hangs forever)
@@ -75,8 +89,7 @@ const App: React.FC = () => {
         ([entitlement, productId]) => {
           if (customerInfo.entitlements.active[entitlement]) {
             // Add levels for this pack
-            const packNumber =
-              productId === IAP_PRODUCTS.LEVEL_PACK_2 ? 2 : 3;
+            const packNumber = productId === IAP_PRODUCTS.LEVEL_PACK_2 ? 2 : 3;
             const startLevel = (packNumber - 1) * 20 + 1;
             const newLevels = Array.from(
               {length: 20},
@@ -85,10 +98,7 @@ const App: React.FC = () => {
 
             // Merge with existing purchased levels
             updatedProfile.purchasedLevels = [
-              ...new Set([
-                ...updatedProfile.purchasedLevels,
-                ...newLevels,
-              ]),
+              ...new Set([...updatedProfile.purchasedLevels, ...newLevels]),
             ];
           }
         },
@@ -127,20 +137,56 @@ const App: React.FC = () => {
 
   const initializeApp = async () => {
     try {
-      // Don't bother initializing/authenticating GameCenter here
-      // The library's authentication is broken (hangs forever)
-      // Instead, we'll just try to use GameCenter features directly
-      // If user is logged in, it works. If not, GameCenter prompts for login.
-      console.log('[App] Skipping GameCenter authentication (will authenticate on-demand)');
+      console.log('[App] Starting initialization with GameCenter support...');
 
-      // Initialize user ID
-      let userId: string;
-      let displayName: string;
+      let userId: string = '';
+      let displayName: string = '';
+      let gameCenterAuthenticated = false;
 
-      // Always use local ID for now - GameCenter player info will be retrieved on-demand
-      userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      displayName = `Player${Math.floor(Math.random() * 10000)}`;
-      console.log('[App] Using local player ID:', {userId, displayName});
+      // Try GameCenter authentication first (iOS only)
+      if (Platform.OS === 'ios') {
+        try {
+          console.log('[App] Checking GameCenter availability...');
+          const isAvailable = await ExpoGameCenter.isGameCenterAvailable();
+
+          if (isAvailable) {
+            console.log(
+              '[App] GameCenter available, attempting authentication...',
+            );
+            const isAuthenticated =
+              await ExpoGameCenter.authenticateLocalPlayer();
+
+            if (isAuthenticated) {
+              const player = await ExpoGameCenter.getLocalPlayer();
+              if (player) {
+                console.log('[App] GameCenter player authenticated:', player);
+                userId = player.playerID;
+                displayName = player.displayName;
+                gameCenterAuthenticated = true;
+              } else {
+                console.warn(
+                  '[App] GameCenter authenticated but no player data',
+                );
+              }
+            } else {
+              console.log(
+                '[App] GameCenter authentication failed or cancelled',
+              );
+            }
+          } else {
+            console.log('[App] GameCenter not available on this device');
+          }
+        } catch (error) {
+          console.warn('[App] GameCenter authentication error:', error);
+        }
+      }
+
+      // Fallback to local ID if GameCenter failed or not iOS
+      if (!userId) {
+        userId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        displayName = `Player${Math.floor(Math.random() * 10000)}`;
+        console.log('[App] Using local player ID:', {userId, displayName});
+      }
 
       // Load or create user profile
       let profile = await getUserProfile();
@@ -159,16 +205,24 @@ const App: React.FC = () => {
           coins: 100, // Starting coins
           hasPremium: false,
           lastPlayedDate: new Date().toISOString(),
+          gameCenterAuthenticated,
         };
         await saveUserProfile(profile);
         console.log('Created new user profile');
-      } else if (profile.userId !== userId) {
-        // User ID changed (e.g., switched GameCenter account)
+      } else if (
+        profile.userId !== userId ||
+        profile.gameCenterAuthenticated !== gameCenterAuthenticated
+      ) {
+        // User ID changed (e.g., switched GameCenter account) or GameCenter status changed
         // Update profile with new GameCenter identity
         profile.userId = userId;
         profile.displayName = displayName;
+        profile.gameCenterAuthenticated = gameCenterAuthenticated;
         await saveUserProfile(profile);
-        console.log('Updated profile with new GameCenter identity');
+        console.log('Updated profile with GameCenter identity:', {
+          userId,
+          gameCenterAuthenticated,
+        });
       }
 
       setUserProfile(profile);
@@ -240,9 +294,18 @@ const App: React.FC = () => {
       // Submit scores to GameCenter leaderboards
       if (Platform.OS === 'ios' && ExpoGameCenter) {
         try {
-          await ExpoGameCenter.submitScore(updatedProfile.totalScore, GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
-          await ExpoGameCenter.submitScore(updatedProfile.highestLevel, GAMECENTER_LEADERBOARDS.HIGHEST_LEVEL);
-          await ExpoGameCenter.submitScore(updatedProfile.totalWordsFound, GAMECENTER_LEADERBOARDS.TOTAL_WORDS);
+          await ExpoGameCenter.submitScore(
+            updatedProfile.totalScore,
+            GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
+          );
+          await ExpoGameCenter.submitScore(
+            updatedProfile.highestLevel,
+            GAMECENTER_LEADERBOARDS.HIGHEST_LEVEL,
+          );
+          await ExpoGameCenter.submitScore(
+            updatedProfile.totalWordsFound,
+            GAMECENTER_LEADERBOARDS.TOTAL_WORDS,
+          );
           console.log('[App] Scores submitted to GameCenter successfully');
         } catch (error) {
           console.warn('[App] Could not submit scores to GameCenter:', error);
@@ -256,46 +319,82 @@ const App: React.FC = () => {
 
           // Level completion achievements
           if (completedCount >= 10) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_10_LEVELS, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.COMPLETE_10_LEVELS,
+              100,
+            );
           }
           if (completedCount >= 20) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_20_LEVELS, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.COMPLETE_20_LEVELS,
+              100,
+            );
           }
           if (completedCount >= 40) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_40_LEVELS, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.COMPLETE_40_LEVELS,
+              100,
+            );
           }
           if (completedCount >= 60) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_60_LEVELS, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.COMPLETE_60_LEVELS,
+              100,
+            );
           }
           if (completedCount >= 80) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.COMPLETE_80_LEVELS, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.COMPLETE_80_LEVELS,
+              100,
+            );
           }
 
           // Score-based achievements
           if (updatedProfile.totalScore >= 10000) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.SCORE_10000, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.SCORE_10000,
+              100,
+            );
           }
           if (updatedProfile.totalScore >= 50000) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.SCORE_50000, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.SCORE_50000,
+              100,
+            );
           }
           if (updatedProfile.totalScore >= 100000) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.SCORE_100000, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.SCORE_100000,
+              100,
+            );
           }
 
           // Word count achievements
           if (updatedProfile.totalWordsFound >= 100) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.FIND_100_WORDS, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.FIND_100_WORDS,
+              100,
+            );
           }
           if (updatedProfile.totalWordsFound >= 500) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.FIND_500_WORDS, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.FIND_500_WORDS,
+              100,
+            );
           }
           if (updatedProfile.totalWordsFound >= 1000) {
-            await ExpoGameCenter.reportAchievement(GAMECENTER_ACHIEVEMENTS.FIND_1000_WORDS, 100);
+            await ExpoGameCenter.reportAchievement(
+              GAMECENTER_ACHIEVEMENTS.FIND_1000_WORDS,
+              100,
+            );
           }
 
           console.log('[App] Achievements reported to GameCenter successfully');
         } catch (error) {
-          console.warn('[App] Could not report achievements to GameCenter:', error);
+          console.warn(
+            '[App] Could not report achievements to GameCenter:',
+            error,
+          );
         }
       }
 
@@ -320,12 +419,16 @@ const App: React.FC = () => {
     console.log('[App] Leaderboard button pressed');
 
     if (Platform.OS !== 'ios') {
-      Alert.alert('GameCenter', 'GameCenter is only available on iOS', [{text: 'OK'}]);
+      Alert.alert('GameCenter', 'GameCenter is only available on iOS', [
+        {text: 'OK'},
+      ]);
       return;
     }
 
     if (!ExpoGameCenter) {
-      Alert.alert('GameCenter', 'GameCenter module not available', [{text: 'OK'}]);
+      Alert.alert('GameCenter', 'GameCenter module not available', [
+        {text: 'OK'},
+      ]);
       return;
     }
 
@@ -346,18 +449,26 @@ const App: React.FC = () => {
         Alert.alert(
           'GameCenter',
           'Please sign in to GameCenter in Settings to view leaderboards.',
-          [{text: 'OK'}]
+          [{text: 'OK'}],
         );
         return;
       }
 
       // Now present leaderboard with timeout wrapper
       console.log('[App] Presenting leaderboard...');
-      console.log('[App] Leaderboard ID:', GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
+      console.log(
+        '[App] Leaderboard ID:',
+        GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
+      );
 
-      const presentPromise = ExpoGameCenter.presentLeaderboard(GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE);
+      const presentPromise = ExpoGameCenter.presentLeaderboard(
+        GAMECENTER_LEADERBOARDS.ALL_TIME_SCORE,
+      );
       const presentTimeout = new Promise<void>((_, reject) => {
-        setTimeout(() => reject(new Error('Leaderboard presentation timeout')), 5000);
+        setTimeout(
+          () => reject(new Error('Leaderboard presentation timeout')),
+          5000,
+        );
       });
 
       await Promise.race([presentPromise, presentTimeout]);
@@ -374,13 +485,13 @@ const App: React.FC = () => {
         Alert.alert(
           'GameCenter Error',
           'GameCenter is not responding. Please ensure you are signed in to GameCenter in Settings.',
-          [{text: 'OK'}]
+          [{text: 'OK'}],
         );
       } else {
         Alert.alert(
           'Error',
           `Failed to show leaderboard: ${error?.message || 'Unknown error'}`,
-          [{text: 'OK'}]
+          [{text: 'OK'}],
         );
       }
     }
@@ -404,15 +515,26 @@ const App: React.FC = () => {
 
   if (!isInitialized) {
     return (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: GAME_CONFIG.COLORS.background}}>
-        <Text style={{color: GAME_CONFIG.COLORS.text, fontSize: 24}}>Loading...</Text>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: GAME_CONFIG.COLORS.background,
+        }}>
+        <Text style={{color: GAME_CONFIG.COLORS.text, fontSize: 24}}>
+          Loading...
+        </Text>
       </View>
     );
   }
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor={GAME_CONFIG.COLORS.background} />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={GAME_CONFIG.COLORS.background}
+      />
       {currentScreen === 'menu' && (
         <MenuScreen
           onPlayPress={handlePlayPress}
@@ -440,22 +562,53 @@ const App: React.FC = () => {
         <ShopScreen onBack={handleBackToMenu} userProfile={userProfile} />
       )}
       {currentScreen === 'leaderboard' && (
-        <View style={{flex: 1, backgroundColor: GAME_CONFIG.COLORS.background, justifyContent: 'center', alignItems: 'center', padding: 20}}>
-          <Text style={{color: GAME_CONFIG.COLORS.text, fontSize: 32, fontWeight: 'bold', marginBottom: 20}}>🏆 Leaderboard</Text>
-          <Text style={{color: GAME_CONFIG.COLORS.textSecondary, fontSize: 16, marginBottom: 40, textAlign: 'center'}}>Coming Soon!</Text>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: GAME_CONFIG.COLORS.background,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}>
+          <Text
+            style={{
+              color: GAME_CONFIG.COLORS.text,
+              fontSize: 32,
+              fontWeight: 'bold',
+              marginBottom: 20,
+            }}>
+            🏆 Leaderboard
+          </Text>
+          <Text
+            style={{
+              color: GAME_CONFIG.COLORS.textSecondary,
+              fontSize: 16,
+              marginBottom: 40,
+              textAlign: 'center',
+            }}>
+            Coming Soon!
+          </Text>
           <TouchableOpacity
             onPress={handleBackToMenu}
-            style={{backgroundColor: GAME_CONFIG.COLORS.primary, paddingVertical: 16, paddingHorizontal: 32, borderRadius: 12}}>
-            <Text style={{color: GAME_CONFIG.COLORS.text, fontSize: 18, fontWeight: 'bold'}}>← Back to Menu</Text>
+            style={{
+              backgroundColor: GAME_CONFIG.COLORS.primary,
+              paddingVertical: 16,
+              paddingHorizontal: 32,
+              borderRadius: 12,
+            }}>
+            <Text
+              style={{
+                color: GAME_CONFIG.COLORS.text,
+                fontSize: 18,
+                fontWeight: 'bold',
+              }}>
+              ← Back to Menu
+            </Text>
           </TouchableOpacity>
         </View>
       )}
-      {currentScreen === 'help' && (
-        <HelpScreen onBack={handleBackToMenu} />
-      )}
-      {currentScreen === 'logs' && (
-        <LogScreen onBack={handleBackToMenu} />
-      )}
+      {currentScreen === 'help' && <HelpScreen onBack={handleBackToMenu} />}
+      {currentScreen === 'logs' && <LogScreen onBack={handleBackToMenu} />}
     </>
   );
 };

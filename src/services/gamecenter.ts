@@ -87,17 +87,7 @@ export const GameCenterService = {
 
     try {
       console.log('[GameCenter] Checking availability...');
-
-      // Add timeout to prevent hanging
-      const availabilityPromise = GameCenter.isGameCenterAvailable();
-      const timeoutPromise = new Promise<boolean>((resolve) => {
-        setTimeout(() => {
-          console.warn('[GameCenter] isGameCenterAvailable timeout after 2 seconds');
-          resolve(false);
-        }, 2000);
-      });
-
-      const available = await Promise.race([availabilityPromise, timeoutPromise]);
+      const available = await GameCenter.isGameCenterAvailable();
       console.log('[GameCenter] Availability check result:', available);
       return available;
     } catch (error) {
@@ -127,17 +117,7 @@ export const GameCenterService = {
 
     try {
       console.log('[GameCenter] Starting authentication...');
-
-      // Add timeout to prevent hanging
-      const authPromise = GameCenter.authenticateLocalPlayer();
-      const timeoutPromise = new Promise<boolean>((resolve) => {
-        setTimeout(() => {
-          console.warn('[GameCenter] Authentication timeout after 3 seconds');
-          resolve(false);
-        }, 3000);
-      });
-
-      const isAuthenticated = await Promise.race([authPromise, timeoutPromise]);
+      const isAuthenticated = await GameCenter.authenticateLocalPlayer();
 
       if (isAuthenticated) {
         console.log('[GameCenter] Player authenticated successfully');
@@ -172,17 +152,7 @@ export const GameCenterService = {
 
     try {
       console.log('[GameCenter] Getting local player...');
-
-      // Add timeout to prevent hanging
-      const playerPromise = GameCenter.getLocalPlayer();
-      const timeoutPromise = new Promise<GameCenterPlayer | null>((resolve) => {
-        setTimeout(() => {
-          console.warn('[GameCenter] getLocalPlayer timeout after 2 seconds');
-          resolve(null);
-        }, 2000);
-      });
-
-      const player = await Promise.race([playerPromise, timeoutPromise]);
+      const player = await GameCenter.getLocalPlayer();
       console.log('[GameCenter] Got local player:', player);
       return player as GameCenterPlayer;
     } catch (error: any) {
@@ -261,17 +231,11 @@ export const GameCenterService = {
     }
 
     try {
-      console.log(`[GameCenter] Attempting to show leaderboard: ${leaderboardID}`);
+      console.log(
+        `[GameCenter] Attempting to show leaderboard: ${leaderboardID}`,
+      );
 
-      // Add timeout to prevent UI freeze
-      const leaderboardPromise = GameCenter.presentLeaderboard(leaderboardID);
-      const timeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Leaderboard presentation timeout after 10 seconds'));
-        }, 10000);
-      });
-
-      await Promise.race([leaderboardPromise, timeoutPromise]);
+      await GameCenter.presentLeaderboard(leaderboardID);
       console.log('[GameCenter] Leaderboard presented successfully');
     } catch (error: any) {
       console.error('[GameCenter] Error presenting leaderboard:', {
