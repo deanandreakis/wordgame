@@ -8,6 +8,7 @@ import Constants from 'expo-constants';
 import {IAP_PRODUCTS} from '@/config/constants';
 import type {UserProfile} from '@/types/game';
 import {RevenueCatError, RevenueCatErrorCode} from './RevenueCatError';
+import {isLevelPackPurchased, isPremiumActive} from './purchaseHelpers';
 
 /**
  * Check if RevenueCat native module is available
@@ -34,21 +35,12 @@ function getPurchases() {
 }
 
 /**
- * Helper to check if a level pack is purchased
+ * Validate RevenueCat API key format
  */
-export function isLevelPackPurchased(
-  packId: string,
-  customerInfo: CustomerInfo,
-): boolean {
-  return customerInfo.entitlements.active[packId] !== undefined;
-}
-
-/**
- * Helper to check if premium is active
- */
-export function isPremiumActive(customerInfo: CustomerInfo): boolean {
-  return customerInfo.entitlements.active['premium'] !== undefined;
-}
+function validateApiKey(apiKey: string | undefined): boolean {
+  if (!apiKey || apiKey.length < 10) {
+    return false;
+  }
 
   // Basic format validation - should be alphanumeric with some special chars
   const validFormat = /^[a-zA-Z0-9_]{10,}$/;
@@ -141,7 +133,9 @@ export const IAPService = {
           : 'Unable to load purchase options. Please try again later.';
 
       throw new RevenueCatError(
-        RevenueCatErrorCode.NETWORK_ERROR,
+        error.code === 'NETWORK_ERROR'
+          ? RevenueCatErrorCode.NETWORK_ERROR
+          : RevenueCatErrorCode.SERVER_ERROR,
         errorMessage,
       );
     }
@@ -356,7 +350,7 @@ export const IAPService = {
 
       // Find package with matching product identifier
       const pkg = offering.availablePackages.find(
-        p => p.productIdentifier === productId,
+        p => (p as any).productIdentifier === productId,
       );
 
       if (!pkg) {
@@ -366,12 +360,7 @@ export const IAPService = {
         );
       }
 
-      // Use type assertion to access price property safely
-      const price =
-        (pkg as any).oneTimePurchasePrice || (pkg as any).product?.price;
-      console.log(
-        `[IAP] Found package: ${productId} with price: ${price?.amount}`,
-      );
+      console.log(`[IAP] Found package: ${productId}`);
 
       return await this.purchasePackage(pkg);
     } catch (error: any) {
