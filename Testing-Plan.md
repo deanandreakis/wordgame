@@ -23,9 +23,16 @@ Comprehensive testing strategy for LetterLoom's RevenueCat IAP integration to en
 
 ## 📅 Phase 1: RevenueCat Dashboard Setup (1-2 hours)
 
-### 1.1 Create Sandbox Products
+### 1.1 Verify Expo.dev Environment Variables
 
-- [ ] Login to RevenueCat: https://app.revenuecat.com
+- [ ] Login to Expo.dev: https://expo.dev
+- [ ] Navigate to project: LetterLoom
+- [ ] Navigate to project settings: Environment Variables
+- [ ] Verify REVENUECAT_IOS_API_KEY is set in Expo.dev
+- [ ] Note: Using Expo.dev environment variables (more secure than local .env)
+
+### 1.2 Create Sandbox Products
+
 - [ ] Navigate to Products: Dashboard > Products
 - [ ] Create test products matching code:
   - `com.letterloom.levels.pack1` - Level Pack 1 ($2.99)
@@ -36,23 +43,137 @@ Comprehensive testing strategy for LetterLoom's RevenueCat IAP integration to en
   - `com.letterloom.coins.large` - 3000 coins ($7.99)
   - `com.letterloom.premium.unlock` - Premium unlock ($9.99)
 
-### 1.2 Get Sandbox API Keys
-
-- [ ] Navigate to Settings: Dashboard > Settings > API Keys
-- [ ] Note current keys (or create sandbox-specific ones)
-- [ ] Add to .env file:
-
-```bash
-REVENUECAT_IOS_API_KEY=sandbox_ios_key_here
-REVENUECAT_ANDROID_API_KEY=sandbox_android_key_here
-```
-
 ### 1.3 Configure App Store Products
 
 - [ ] Login to App Store Connect: https://appstoreconnect.apple.com
 - [ ] Create identical product IDs matching RevenueCat setup
 - [ ] Upload screenshots for each IAP product
 - [ ] Submit for review (takes 1-3 days)
+
+**Screenshot Requirements Details:**
+
+**Required Screenshots (5 total - 3 sizes per product):**
+
+1. **6.7" iPhone (iPhone 14, 15 Pro, etc.)**
+2. **6.5" iPhone (iPhone 12, 13 Pro, SE, etc.)**
+3. **5.5" iPhone (iPhone SE, iPhone 8, etc.)**
+4. **12.9" iPad (iPad Pro, iPad Air, etc.)**
+5. **iPad Pro 12.9"** (iPad Pro 12.9")
+
+**Screenshot Types Needed:**
+
+**Level Packs (3 products):**
+
+- Main menu/shop screen showing level pack purchase options
+- Level pack selection screen
+- Level pack unlock screen (after purchase)
+- In-game level selection showing pack availability
+
+**Coin Bundles (3 products):**
+
+- Shop screen showing coin purchase options
+- Coin pack selection screen
+- In-game coin balance display
+
+**Premium Unlock (1 product):**
+
+- Premium purchase/upgrade screen
+- Premium unlock confirmation
+- Premium features showcase (ads removed, etc.)
+
+**Screenshot Creation Guidelines:**
+
+**Technical Requirements:**
+
+- Format: PNG or JPG (Apple accepts both)
+- Resolution: 1242x2208 pixels minimum (2x point scale)
+- File size: Under 500KB per screenshot
+- No transparency, no watermarks
+- Clean, focused UI (no status bars, notifications)
+
+**Content Guidelines:**
+
+- Show actual in-app UI in each screenshot
+- Display product name and price clearly
+- Show premium/unlocked status where relevant
+- Include game elements: letter tiles, score displays, level grids
+- Use current app design and color scheme
+- Showcase key features: word selection, scoring, level progression
+
+**Per-Product Screenshots (5 screenshots):**
+
+**Level Pack 1:**
+
+1. Shop screen showing "Level Pack 1 - $2.99" option
+2. Level pack selection screen with pack 1 selected
+3. In-game level select screen with pack 1 available
+4. Example level from pack 1 (e.g., Level 25)
+5. Level completion celebration for pack 1 levels
+
+**Level Pack 2:**
+
+1. Shop screen showing "Level Pack 2 - $2.99" option
+2. Level pack selection screen with pack 2 selected
+3. In-game level select screen with pack 2 available
+4. Example level from pack 2 (e.g., Level 42)
+5. Level completion celebration for pack 2 levels
+
+**Level Pack 3:**
+
+1. Shop screen showing "Level Pack 3 - $2.99" option
+2. Level pack selection screen with pack 3 selected
+3. In-game level select screen with pack 3 available
+4. Example level from pack 3 (e.g., Level 55)
+5. Level completion celebration for pack 3 levels
+
+**Coins Small (250 coins):**
+
+1. Shop screen showing "250 Coins - $0.99" option
+2. Coin balance screen showing 250 coins
+3. In-game word selection with coin cost shown
+4. Hint purchase using 250 coins
+5. Game play showing coins in use
+
+**Coins Medium (1000 coins):**
+
+1. Shop screen showing "1000 Coins - $2.99" option
+2. Coin balance screen showing 1000 coins
+3. In-game word selection with coin cost shown
+4. Multiple hint purchases using coins
+5. Extended game play with ample coins
+
+**Coins Large (3000 coins):**
+
+1. Shop screen showing "3000 Coins - $7.99" option
+2. Coin balance screen showing 3000 coins
+3. Power-up purchases (time freeze, double points)
+4. Premium upgrade using accumulated coins
+5. High-level gameplay with coin strategy
+
+**Premium Unlock:**
+
+1. Premium purchase screen showing "Premium Unlock - $9.99" option
+2. Premium upgrade confirmation screen
+3. Premium features showcase (all level packs unlocked, no ads)
+4. Menu screen showing "Premium" badge
+5. Premium-only features (unlimited hints, exclusive levels)
+
+**Upload Process:**
+
+1. Create 5 folders: LevelPack1, LevelPack2, LevelPack3, CoinsBundles, PremiumUnlock
+2. Take screenshots using iOS simulator or device
+3. Name screenshots: `Shop_6.7_1.png`, `Shop_6.5_2.png`, etc.
+4. Upload to App Store Connect > My Apps > LetterLoom > In-App Purchases
+5. Select all 25 screenshots (5 sizes × 5 products) at once
+6. Submit for review
+
+**Quality Check Before Upload:**
+
+- [ ] Screens are clear and high resolution
+- [ ] No UI elements or distractions
+- [ ] Product names and prices visible
+- [ ] Current app design accurately represented
+- [ ] Screens show game features attractively
 
 ---
 
@@ -247,15 +368,11 @@ SHOW_DEBUG_LOGS: (true,
 
 **Manual Steps:**
 
-1. Temporarily modify .env:
-
-```bash
-REVENUECAT_IOS_API_KEY=invalid
-```
-
-2. Restart app
-3. Attempt purchase
-4. Verify error message
+1. Verify Expo.dev has correct API key
+2. If testing locally, temporarily modify Expo.dev value
+3. Restart app
+4. Attempt purchase
+5. Verify error message
 
 **Expected Behavior:**
 
@@ -324,7 +441,6 @@ REVENUECAT_IOS_API_KEY=invalid
 - All previous purchases restored
 - Levels, coins, premium status all back
 - Console shows "[IAP] Restore successful"
-- No crashes or errors
 
 **Verification Checklist:**
 
@@ -435,14 +551,12 @@ REVENUECAT_IOS_API_KEY=invalid
 - App shows Apple's native insufficient funds error
 - No app crash
 - Clear message about payment issue
-- User can try again when funds available
 
 **Verification Checklist:**
 
 - [ ] Insufficient funds handled gracefully
 - [ ] No app crash
 - [ ] Clear error message
-- [ ] Payment gateway error shown
 - [ ] User understands what happened
 - [ ] App remains stable
 
@@ -478,7 +592,6 @@ Please check your internet connection and try again.
    - `purchases` - Successful purchases
    - `app_transferred` - New app installations
    - `subscriber_alerts` - Subscription changes
-   - `revenue_cat_error` - API errors
 
 ### Test Tracking Spreadsheet
 
@@ -487,39 +600,37 @@ Please check your internet connection and try again.
 | Test Case             | Status | Issues Found | Date | Notes |
 | --------------------- | ------ | ------------ | ---- | ----- |
 | Basic Purchase        | [ ]    |              |      |       |
-| Coin Purchase         | [ ]    |              |      |
-| Premium Unlock        | [ ]    |              |      |
-| Network Failure       | [ ]    |              |      |
-| Cancelled Purchase    | [ ]    |              |      |
-| Invalid API Key       | [ ]    |              |      |
-| Purchase Verification | [ ]    |              |      |
-| Restore Purchases     | [ ]    |              |      |
-| Multiple Device Sync  | [ ]    |              |      |
-| Rapid Purchases       | [ ]    |              |      |
-| Background/Foreground | [ ]    |              |      |
-| Insufficient Funds    | [ ]    |              |      |
+| Coin Purchase         | [ ]    |              |      |       |
+| Premium Unlock        | [ ]    |              |      |       |
+| Network Failure       | [ ]    |              |      |       |
+| Cancelled Purchase    | [ ]    |              |      |       |
+| Invalid API Key       | [ ]    |              |      |       |
+| Purchase Verification | [ ]    |              |      |       |
+| Restore Purchases     | [ ]    |              |      |       |
+| Multiple Device Sync  | [ ]    |              |      |       |
+| Rapid Purchases       | [ ]    |              |      |       |
+| Background/Foreground | [ ]    |              |      |       |
+| Insufficient Funds    | [ ]    |              |      |       |
 
 ---
 
-## 🚨 Critical Success Criteria
+## 🎯 Next Steps After Testing
 
-**Production Launch Requires:**
+**If All Tests Pass:**
 
-- ✅ All purchase flows complete successfully
-- ✅ Error messages are user-friendly
-- ✅ No app crashes during any test
-- ✅ Purchases persist across app restarts
-- ✅ Restores work correctly
-- ✅ Entitlements granted immediately after purchase
-- ✅ Network errors handled gracefully
-- ✅ Cancelled purchases handled gracefully
+1. Update app version number
+2. Prepare App Store submission
+3. Create marketing screenshots
+4. Write release notes
+5. Schedule launch date
 
-**Optional but Recommended:**
+**If Issues Found:**
 
-- ✅ Cross-device sync working (iCloud)
-- ✅ Performance < 2 seconds for purchase completion
-- ✅ No memory leaks during purchases
-- ✅ Clean revenue tracking in dashboard
+1. Prioritize by severity
+2. Fix critical issues first
+3. Re-test failed scenarios
+4. Document workarounds
+5. Consider phased release
 
 ---
 
@@ -549,27 +660,52 @@ Please check your internet connection and try again.
 
 ---
 
-## 🎯 Next Steps After Testing
+## 🚨 Important Notes
 
-**If All Tests Pass:**
+### Security Setup
 
-1. Update app version number
-2. Prepare App Store submission
-3. Create marketing screenshots
-4. Write release notes
-5. Schedule launch date
+✅ **Using Expo.dev environment variables** - More secure than local .env file
 
-**If Issues Found:**
+- Keys are managed centrally in Expo.dev dashboard
+- Not committed to git repository
+- EAS builds will use EAS secrets for production
 
-1. Prioritize by severity
-2. Fix critical issues first
-3. Re-test failed scenarios
-4. Document workarounds
-5. Consider phased release
+### Environment Variables Access
+
+Your app.config.js correctly reads:
+
+```javascript
+revenueCat: {
+  iosApiKey: process.env.REVENUECAT_IOS_API_KEY,
+  androidApiKey: process.env.REVENUECAT_ANDROID_API_KEY,
+}
+```
+
+This means:
+
+- **Development**: Uses Expo.dev environment variables
+- **Production**: Uses EAS secrets
+- No need for local .env file (safer)
+
+### Testing Environment Setup
+
+For local development without Expo.dev access, create local .env:
+
+```bash
+# Copy .env.example to .env
+# Update with your sandbox API keys
+```
+
+For production builds, use EAS secrets in GitHub Actions:
+
+```bash
+# EAS secrets are automatically injected during builds
+# No local .env file needed
+```
 
 ---
 
-**Testing Progress:**
+## Testing Progress
 
 - Phase 1 (Dashboard Setup): [ ] 0%
 - Phase 2 (Environment Prep): [ ] 0%
