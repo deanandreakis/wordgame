@@ -134,7 +134,7 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
   const levelPackages = [
     {
       productId: IAP_PRODUCTS.LEVEL_PACK_1,
-      levels: '1-20',
+      levelsRange: '21-40',
       description: 'Unlock Levels 21-40',
       features: [
         '20 premium levels',
@@ -144,17 +144,13 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
     },
     {
       productId: IAP_PRODUCTS.LEVEL_PACK_2,
-      levels: '21-40',
+      levelsRange: '41-60',
       description: 'Unlock Levels 41-60',
-      features: [
-        '20 premium levels',
-        'Medium difficulty',
-        'Challenge yourself',
-      ],
+      features: ['20 premium levels', 'Hard difficulty', 'Challenge yourself'],
     },
     {
       productId: IAP_PRODUCTS.LEVEL_PACK_3,
-      levels: '41-60',
+      levelsRange: '61-80',
       description: 'Unlock Levels 61-80',
       features: ['20 premium levels', 'Expert difficulty', 'Master the game'],
     },
@@ -273,9 +269,13 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                       <Text style={styles.productDescription}>
                         {item.description}
                       </Text>
-                      <Text style={styles.productDescription}>
-                        {item.description}
-                      </Text>
+                      <View style={styles.featureList}>
+                        {item.features.map(feature => (
+                          <Text key={feature} style={styles.featureText}>
+                            • {feature}
+                          </Text>
+                        ))}
+                      </View>
                       <TouchableOpacity
                         style={styles.buyButton}
                         onPress={() => pkg && handlePurchase(pkg)}
@@ -335,11 +335,18 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                           Level Pack {packNumber}
                         </Text>
                         <Text style={styles.productSubtitle}>
-                          Levels {item.levels}
+                          Levels {item.levelsRange}
                         </Text>
-                        <Text style={styles.productDetail}>
-                          20 challenging levels
+                        <Text style={styles.productDescription}>
+                          {item.description}
                         </Text>
+                        <View style={styles.featureList}>
+                          {item.features.map(feature => (
+                            <Text key={feature} style={styles.featureText}>
+                              • {feature}
+                            </Text>
+                          ))}
+                        </View>
                         <TouchableOpacity
                           style={styles.buyButton}
                           onPress={() => pkg && handlePurchase(pkg)}
@@ -508,7 +515,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    minHeight: 180,
+    minHeight: 220,
   },
   badge: {
     position: 'absolute',
@@ -550,17 +557,36 @@ const styles = StyleSheet.create({
   productLabel: {
     fontSize: 12,
     color: GAME_CONFIG.COLORS.textSecondary,
-    marginBottom: 12,
+    marginBottom: 6,
   },
   productTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: GAME_CONFIG.COLORS.text,
     marginBottom: 4,
+    textAlign: 'center',
   },
   productSubtitle: {
     fontSize: 14,
     color: GAME_CONFIG.COLORS.textSecondary,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  productDescription: {
+    fontSize: 12,
+    color: GAME_CONFIG.COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  featureList: {
+    width: '100%',
+    marginBottom: 10,
+  },
+  featureText: {
+    fontSize: 12,
+    color: GAME_CONFIG.COLORS.textSecondary,
+    textAlign: 'left',
     marginBottom: 2,
   },
   productDetail: {
