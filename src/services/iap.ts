@@ -34,12 +34,21 @@ function getPurchases() {
 }
 
 /**
- * Validate RevenueCat API key format
+ * Helper to check if a level pack is purchased
  */
-function validateApiKey(apiKey: string | undefined): boolean {
-  if (!apiKey || apiKey.length < 10) {
-    return false;
-  }
+export function isLevelPackPurchased(
+  packId: string,
+  customerInfo: CustomerInfo,
+): boolean {
+  return customerInfo.entitlements.active[packId] !== undefined;
+}
+
+/**
+ * Helper to check if premium is active
+ */
+export function isPremiumActive(customerInfo: CustomerInfo): boolean {
+  return customerInfo.entitlements.active['premium'] !== undefined;
+}
 
   // Basic format validation - should be alphanumeric with some special chars
   const validFormat = /^[a-zA-Z0-9_]{10,}$/;

@@ -10,14 +10,16 @@ import {
   Alert,
 } from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
-import {GAME_CONFIG, IAP_PRODUCTS, COIN_AMOUNTS, IAP_PRICING} from '@/config/constants';
-import {IAPService, isPremiumActive} from '@/services/iap';
+import {
+  GAME_CONFIG,
+  IAP_PRODUCTS,
+  COIN_AMOUNTS,
+  IAP_PRICING,
+} from '@/config/constants';
+import {IAPService} from '@/services/iap';
 import {getUserProfile} from '@/utils/storage';
 import {UserProfile} from '@/types/game';
-import type {
-  PurchasesOffering,
-  PurchasesPackage,
-} from 'react-native-purchases';
+import type {PurchasesOffering, PurchasesPackage} from 'react-native-purchases';
 
 interface Props {
   onBack: () => void;
@@ -87,10 +89,16 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
     );
   };
 
-  const formatPrice = (productId: string | undefined, pkg?: PurchasesPackage | undefined): string => {
+  const formatPrice = (
+    productId: string | undefined,
+    pkg?: PurchasesPackage | undefined,
+  ): string => {
     if (!productId) return '$?.??';
     // Use static pricing from IAP_PRICING config
-    return IAP_PRICING[productId as keyof typeof IAP_PRICING] || (pkg?.product.priceString ?? '$?.??');
+    return (
+      IAP_PRICING[productId as keyof typeof IAP_PRICING] ||
+      (pkg?.product.priceString ?? '$?.??')
+    );
   };
 
   const hasPremium = userProfile?.hasPremium ?? false;
@@ -100,23 +108,56 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
       productId: IAP_PRODUCTS.COINS_SMALL,
       amount: COIN_AMOUNTS.SMALL,
       badge: null,
+      description: 'Get 250 coins',
+      features: ['Buy 3 hints', 'Shuffle 2×', '1 time freeze'],
     },
     {
       productId: IAP_PRODUCTS.COINS_MEDIUM,
       amount: COIN_AMOUNTS.MEDIUM,
       badge: null,
+      description: 'Get 1000 coins',
+      features: ['Buy 15 hints', 'Shuffle 8×', '4 time freezes'],
     },
     {
       productId: IAP_PRODUCTS.COINS_LARGE,
       amount: COIN_AMOUNTS.LARGE,
       badge: 'Best Value',
+      description: 'Get 3000 coins',
+      features: [
+        'Unlimited hints',
+        'Unlimited shuffles',
+        'Unlimited time freezes',
+      ],
     },
   ];
 
   const levelPackages = [
-    {productId: IAP_PRODUCTS.LEVEL_PACK_1, levels: '1-20'},
-    {productId: IAP_PRODUCTS.LEVEL_PACK_2, levels: '21-40'},
-    {productId: IAP_PRODUCTS.LEVEL_PACK_3, levels: '41-60'},
+    {
+      productId: IAP_PRODUCTS.LEVEL_PACK_1,
+      levels: '1-20',
+      description: 'Unlock Levels 21-40',
+      features: [
+        '20 premium levels',
+        'Medium difficulty',
+        'Continue your journey',
+      ],
+    },
+    {
+      productId: IAP_PRODUCTS.LEVEL_PACK_2,
+      levels: '21-40',
+      description: 'Unlock Levels 41-60',
+      features: [
+        '20 premium levels',
+        'Medium difficulty',
+        'Challenge yourself',
+      ],
+    },
+    {
+      productId: IAP_PRODUCTS.LEVEL_PACK_3,
+      levels: '41-60',
+      description: 'Unlock Levels 61-80',
+      features: ['20 premium levels', 'Expert difficulty', 'Master the game'],
+    },
   ];
 
   if (loading) {
@@ -154,18 +195,23 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
           </View>
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}>
           {/* Premium Card */}
           {!hasPremium && (
             <View style={styles.section}>
               <LinearGradient
-                colors={[GAME_CONFIG.COLORS.gradient1, GAME_CONFIG.COLORS.gradient2]}
+                colors={[
+                  GAME_CONFIG.COLORS.gradient1,
+                  GAME_CONFIG.COLORS.gradient2,
+                ]}
                 style={styles.premiumCard}>
                 <Text style={styles.premiumBadge}>⭐ PREMIUM</Text>
                 <Text style={styles.premiumTitle}>Premium Unlock</Text>
                 <Text style={styles.premiumDescription}>
-                  • Double coin rewards from gameplay{'\n'}
-                  • Unlock all levels instantly
+                  • Double coin rewards from gameplay{'\n'}• Unlock all levels
+                  instantly
                 </Text>
                 <TouchableOpacity
                   style={styles.premiumButton}
@@ -185,10 +231,15 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
           {hasPremium && (
             <View style={styles.section}>
               <LinearGradient
-                colors={[GAME_CONFIG.COLORS.success, GAME_CONFIG.COLORS.glowGreen]}
+                colors={[
+                  GAME_CONFIG.COLORS.success,
+                  GAME_CONFIG.COLORS.glowGreen,
+                ]}
                 style={styles.premiumCard}>
                 <Text style={styles.premiumBadge}>👑 PREMIUM ACTIVE</Text>
-                <Text style={styles.premiumTitle}>You're a Premium Member!</Text>
+                <Text style={styles.premiumTitle}>
+                  You're a Premium Member!
+                </Text>
                 <Text style={styles.premiumDescription}>
                   Thank you for your support!{'\n'}
                   Enjoy ad-free gameplay and 2x coin rewards.
@@ -206,7 +257,10 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                 return (
                   <View key={item.productId} style={styles.productCard}>
                     <LinearGradient
-                      colors={[GAME_CONFIG.COLORS.cardBg, GAME_CONFIG.COLORS.tile]}
+                      colors={[
+                        GAME_CONFIG.COLORS.cardBg,
+                        GAME_CONFIG.COLORS.tile,
+                      ]}
                       style={styles.productGradient}>
                       {item.badge && (
                         <View style={styles.badge}>
@@ -216,12 +270,21 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                       <Text style={styles.productIcon}>🪙</Text>
                       <Text style={styles.productAmount}>{item.amount}</Text>
                       <Text style={styles.productLabel}>Coins</Text>
+                      <Text style={styles.productDescription}>
+                        {item.description}
+                      </Text>
+                      <Text style={styles.productDescription}>
+                        {item.description}
+                      </Text>
                       <TouchableOpacity
                         style={styles.buyButton}
                         onPress={() => pkg && handlePurchase(pkg)}
                         disabled={purchasing || !pkg}>
                         <LinearGradient
-                          colors={[GAME_CONFIG.COLORS.primary, GAME_CONFIG.COLORS.secondary]}
+                          colors={[
+                            GAME_CONFIG.COLORS.primary,
+                            GAME_CONFIG.COLORS.secondary,
+                          ]}
                           style={styles.buyButtonGradient}>
                           <Text style={styles.buyButtonText}>
                             {formatPrice(item.productId, pkg)}
@@ -242,15 +305,25 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
               <View style={styles.grid}>
                 {levelPackages.map(item => {
                   const pkg = findPackage(item.productId);
-                  const packNumber = item.productId === IAP_PRODUCTS.LEVEL_PACK_1 ? 1 : item.productId === IAP_PRODUCTS.LEVEL_PACK_2 ? 2 : 3;
+                  const packNumber =
+                    item.productId === IAP_PRODUCTS.LEVEL_PACK_1
+                      ? 1
+                      : item.productId === IAP_PRODUCTS.LEVEL_PACK_2
+                        ? 2
+                        : 3;
                   const isOwned = userProfile?.purchasedLevels?.some(
-                    level => level >= (packNumber - 1) * 20 + 1 && level <= packNumber * 20
+                    level =>
+                      level >= (packNumber - 1) * 20 + 1 &&
+                      level <= packNumber * 20,
                   );
 
                   return (
                     <View key={item.productId} style={styles.productCard}>
                       <LinearGradient
-                        colors={[GAME_CONFIG.COLORS.cardBg, GAME_CONFIG.COLORS.tile]}
+                        colors={[
+                          GAME_CONFIG.COLORS.cardBg,
+                          GAME_CONFIG.COLORS.tile,
+                        ]}
                         style={styles.productGradient}>
                         {isOwned && (
                           <View style={styles.ownedBadge}>
@@ -258,9 +331,15 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                           </View>
                         )}
                         <Text style={styles.productIcon}>📚</Text>
-                        <Text style={styles.productTitle}>Level Pack {packNumber}</Text>
-                        <Text style={styles.productSubtitle}>Levels {item.levels}</Text>
-                        <Text style={styles.productDetail}>20 challenging levels</Text>
+                        <Text style={styles.productTitle}>
+                          Level Pack {packNumber}
+                        </Text>
+                        <Text style={styles.productSubtitle}>
+                          Levels {item.levels}
+                        </Text>
+                        <Text style={styles.productDetail}>
+                          20 challenging levels
+                        </Text>
                         <TouchableOpacity
                           style={styles.buyButton}
                           onPress={() => pkg && handlePurchase(pkg)}
@@ -268,12 +347,20 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                           <LinearGradient
                             colors={
                               isOwned
-                                ? [GAME_CONFIG.COLORS.textSecondary, GAME_CONFIG.COLORS.textSecondary]
-                                : [GAME_CONFIG.COLORS.primary, GAME_CONFIG.COLORS.secondary]
+                                ? [
+                                    GAME_CONFIG.COLORS.textSecondary,
+                                    GAME_CONFIG.COLORS.textSecondary,
+                                  ]
+                                : [
+                                    GAME_CONFIG.COLORS.primary,
+                                    GAME_CONFIG.COLORS.secondary,
+                                  ]
                             }
                             style={styles.buyButtonGradient}>
                             <Text style={styles.buyButtonText}>
-                              {isOwned ? 'Owned' : formatPrice(item.productId, pkg)}
+                              {isOwned
+                                ? 'Owned'
+                                : formatPrice(item.productId, pkg)}
                             </Text>
                           </LinearGradient>
                         </TouchableOpacity>
@@ -290,15 +377,16 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
             style={styles.restoreButton}
             onPress={handleRestore}
             disabled={purchasing}>
-            <Text style={styles.restoreButtonText}>
-              Restore Purchases
-            </Text>
+            <Text style={styles.restoreButtonText}>Restore Purchases</Text>
           </TouchableOpacity>
         </ScrollView>
 
         {purchasing && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={GAME_CONFIG.COLORS.primary} />
+            <ActivityIndicator
+              size="large"
+              color={GAME_CONFIG.COLORS.primary}
+            />
           </View>
         )}
       </SafeAreaView>
