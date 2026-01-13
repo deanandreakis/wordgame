@@ -7,8 +7,6 @@ import type {
 import Constants from 'expo-constants';
 import {IAP_PRODUCTS} from '@/config/constants';
 import type {UserProfile} from '@/types/game';
-import {RevenueCatError, RevenueCatErrorCode} from './RevenueCatError';
-import {isLevelPackPurchased, isPremiumActive} from './purchaseHelpers';
 
 /**
  * Check if RevenueCat native module is available
@@ -16,6 +14,7 @@ import {isLevelPackPurchased, isPremiumActive} from './purchaseHelpers';
  */
 function isNativeModuleAvailable(): boolean {
   try {
+    // Try to require the module - will throw if not available
     require('react-native-purchases');
     return true;
   } catch (error) {
@@ -35,31 +34,16 @@ function getPurchases() {
 }
 
 /**
- * Validate RevenueCat API key format
- */
-function validateApiKey(apiKey: string | undefined): boolean {
-  if (!apiKey || apiKey.length < 10) {
-    return false;
-  }
-
-  // Basic format validation - should be alphanumeric with some special chars
-  const validFormat = /^[a-zA-Z0-9_]{10,}$/;
-  return validFormat.test(apiKey);
-}
-
-/**
  * RevenueCat IAP Service for Expo
  * Works with both iOS and Android
  * API keys are loaded from secure environment variables via app.config.js
  * Gracefully handles Expo Go (where native module is not available)
- * Provides robust error handling with user-friendly messages
  */
 export const IAPService = {
   isAvailable: isNativeModuleAvailable(),
 
   /**
    * Initialize RevenueCat with platform-specific API key from environment
-   * Validates API key format before attempting configuration
    */
   async initialize(): Promise<void> {
     if (!this.isAvailable) {
@@ -76,22 +60,14 @@ export const IAPService = {
     }
 
     try {
+      // Get API key based on platform from expo-constants
       const apiKey =
         Platform.OS === 'ios'
           ? Constants.expoConfig?.extra?.revenueCat?.iosApiKey
           : Constants.expoConfig?.extra?.revenueCat?.androidApiKey;
 
-      // Validate API key format before using it
-      if (!validateApiKey(apiKey)) {
-        throw new RevenueCatError(
-          RevenueCatErrorCode.API_KEY_INVALID,
-          `Invalid RevenueCat API key format for ${Platform.OS}. Key should be 10+ characters and alphanumeric.`,
-        );
-      }
-
       if (!apiKey) {
-        throw new RevenueCatError(
-          RevenueCatErrorCode.API_KEY_INVALID,
+        throw new Error(
           `RevenueCat API key not found for ${Platform.OS}. Please check your environment variables and app.config.js`,
         );
       }
@@ -101,10 +77,7 @@ export const IAPService = {
       console.log('RevenueCat initialized for', Platform.OS);
     } catch (error) {
       console.error('Error initializing RevenueCat:', error);
-      throw new RevenueCatError(
-        RevenueCatErrorCode.SERVER_ERROR,
-        'Failed to initialize RevenueCat. Please check your internet connection.',
-      );
+      throw error;
     }
   },
 
@@ -123,96 +96,43 @@ export const IAPService = {
     try {
       const offerings = await Purchases.getOfferings();
       return offerings.current;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error getting offerings:', error);
-
-      // Provide user-friendly error message
-      const errorMessage =
-        error.code === 'NETWORK_ERROR' || error.code === 'INTERNET_ERROR'
-          ? 'Please check your internet connection and try again.'
-          : 'Unable to load purchase options. Please try again later.';
-
-      throw new RevenueCatError(
-        error.code === 'NETWORK_ERROR'
-          ? RevenueCatErrorCode.NETWORK_ERROR
-          : RevenueCatErrorCode.SERVER_ERROR,
-        errorMessage,
-      );
+      return null;
     }
   },
 
   /**
    * Purchase a package
-   * Added purchase verification to ensure transaction completed successfully
    */
   async purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo> {
     if (!this.isAvailable) {
-      throw new RevenueCatError(
-        RevenueCatErrorCode.PRODUCT_NOT_FOUND,
+      throw new Error(
         'RevenueCat not available - build a development client to test purchases',
       );
     }
 
     const Purchases = getPurchases();
     if (!Purchases) {
-      throw new RevenueCatError(
-        RevenueCatErrorCode.PRODUCT_NOT_FOUND,
-        'RevenueCat module not found',
-      );
+      throw new Error('RevenueCat module not found');
     }
 
     try {
-      console.log(`[IAP] Starting purchase for package: ${pkg.identifier}`);
-
       const {customerInfo} = await Purchases.purchasePackage(pkg);
-
-      // Verify purchase actually succeeded
-      if (!customerInfo || customerInfo.error) {
-        throw new RevenueCatError(
-          RevenueCatErrorCode.PURCHASE_FAILED,
-          'Purchase did not complete. Please try again.',
-        );
-      }
-
-      console.log('[IAP] Purchase successful:', {
-        packageId: pkg.identifier,
-        customerInfo,
-      });
 
       if (this.onPurchaseSuccess) {
         this.onPurchaseSuccess(customerInfo);
       }
 
       return customerInfo;
-    } catch (error: any) {
-      console.error('[IAP] Error purchasing package:', {
-        message: error?.message || 'No message',
-        code: error?.code || 'No code',
-        name: error?.name || 'No name',
-        stack: error?.stack || 'No stack',
-        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-      });
+    } catch (error) {
+      console.error('Error purchasing package:', error);
 
       if (this.onPurchaseError) {
         this.onPurchaseError(error);
       }
 
-      // Provide user-friendly error messages
-      const userMessage =
-        error.code === 'NETWORK_ERROR' || error.code === 'INTERNET_ERROR'
-          ? 'Please check your internet connection and try again.'
-          : error.code === 'USER_CANCELLED'
-            ? 'Purchase was cancelled. You can try again anytime.'
-            : 'An unexpected error occurred. Please try again later.';
-
-      throw new RevenueCatError(
-        error.code === 'NETWORK_ERROR'
-          ? RevenueCatErrorCode.NETWORK_ERROR
-          : error.code === 'USER_CANCELLED'
-            ? RevenueCatErrorCode.PURCHASE_FAILED
-            : RevenueCatErrorCode.SERVER_ERROR,
-        userMessage,
-      );
+      throw error;
     }
   },
 
@@ -221,53 +141,22 @@ export const IAPService = {
    */
   async restorePurchases(): Promise<CustomerInfo> {
     if (!this.isAvailable) {
-      throw new RevenueCatError(
-        RevenueCatErrorCode.PRODUCT_NOT_FOUND,
+      throw new Error(
         'RevenueCat not available - build a development client to restore purchases',
       );
     }
 
     const Purchases = getPurchases();
     if (!Purchases) {
-      throw new RevenueCatError(
-        RevenueCatErrorCode.PRODUCT_NOT_FOUND,
-        'RevenueCat module not found',
-      );
+      throw new Error('RevenueCat module not found');
     }
 
     try {
       const customerInfo = await Purchases.restorePurchases();
-
-      // Verify restore actually succeeded
-      if (!customerInfo || customerInfo.error) {
-        throw new RevenueCatError(
-          RevenueCatErrorCode.PURCHASE_FAILED,
-          'Restore did not complete. Please try again.',
-        );
-      }
-
-      console.log('[IAP] Restore successful:', customerInfo);
       return customerInfo;
-    } catch (error: any) {
-      console.error('[IAP] Error restoring purchases:', {
-        message: error?.message || 'No message',
-        code: error?.code || 'No code',
-        name: error?.name || 'No name',
-        stack: error?.stack || 'No stack',
-        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-      });
-
-      const userMessage =
-        error.code === 'NETWORK_ERROR' || error.code === 'INTERNET_ERROR'
-          ? 'Please check your internet connection and try again.'
-          : 'Could not restore purchases. Please try again later.';
-
-      throw new RevenueCatError(
-        error.code === 'NETWORK_ERROR'
-          ? RevenueCatErrorCode.NETWORK_ERROR
-          : RevenueCatErrorCode.SERVER_ERROR,
-        userMessage,
-      );
+    } catch (error) {
+      console.error('Error restoring purchases:', error);
+      throw error;
     }
   },
 
@@ -276,65 +165,31 @@ export const IAPService = {
    */
   async getCustomerInfo(): Promise<CustomerInfo> {
     if (!this.isAvailable) {
-      throw new RevenueCatError(
-        RevenueCatErrorCode.PRODUCT_NOT_FOUND,
-        'RevenueCat not available',
-      );
+      throw new Error('RevenueCat not available');
     }
 
     const Purchases = getPurchases();
     if (!Purchases) {
-      throw new RevenueCatError(
-        RevenueCatErrorCode.PRODUCT_NOT_FOUND,
-        'RevenueCat module not found',
-      );
+      throw new Error('RevenueCat module not found');
     }
 
     try {
       const customerInfo = await Purchases.getCustomerInfo();
-
-      if (!customerInfo) {
-        throw new RevenueCatError(
-          RevenueCatErrorCode.SERVER_ERROR,
-          'Could not retrieve customer information.',
-        );
-      }
-
       return customerInfo;
-    } catch (error: any) {
-      console.error('[IAP] Error getting customer info:', {
-        message: error?.message || 'No message',
-        code: error?.code || 'No code',
-        name: error?.name || 'No name',
-        stack: error?.stack || 'No stack',
-        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-      });
-
-      throw new RevenueCatError(
-        RevenueCatErrorCode.SERVER_ERROR,
-        'Could not retrieve customer information. Please try again later.',
-      );
+    } catch (error) {
+      console.error('Error getting customer info:', error);
+      throw error;
     }
   },
 
   /**
    * Purchase a product by product ID
-   * Uses RevenueCat offerings to get current pricing
-   * No more hardcoded prices - uses live RevenueCat pricing
+   * This method finds the package with the matching product identifier and purchases it
    */
   async purchaseProduct(productId: string): Promise<CustomerInfo> {
     if (!this.isAvailable) {
-      throw new RevenueCatError(
-        RevenueCatErrorCode.PRODUCT_NOT_FOUND,
+      throw new Error(
         'RevenueCat not available - build a development client to test purchases',
-      );
-    }
-
-    const Purchases = getPurchases();
-    if (!Purchases) {
-      throw new RevenueCatError(
-        RevenueCatErrorCode.PRODUCT_NOT_FOUND,
-        'RevenueCat module not found',
       );
     }
 
@@ -342,47 +197,22 @@ export const IAPService = {
       const offering = await this.getOfferings();
 
       if (!offering) {
-        throw new RevenueCatError(
-          RevenueCatErrorCode.PRODUCT_NOT_FOUND,
-          'Unable to load purchase options. Please try again later.',
-        );
+        throw new Error('No offerings available');
       }
 
       // Find package with matching product identifier
       const pkg = offering.availablePackages.find(
-        p => (p as any).productIdentifier === productId,
+        p => p.product.identifier === productId
       );
 
       if (!pkg) {
-        throw new RevenueCatError(
-          RevenueCatErrorCode.PRODUCT_NOT_FOUND,
-          `Product ${productId} not found in RevenueCat offerings`,
-        );
+        throw new Error(`Product ${productId} not found in offerings`);
       }
 
-      console.log(`[IAP] Found package: ${productId}`);
-
       return await this.purchasePackage(pkg);
-    } catch (error: any) {
-      console.error('[IAP] Error purchasing product:', {
-        message: error?.message || 'No message',
-        code: error?.code || 'No code',
-        name: error?.name || 'No name',
-        stack: error?.stack || 'No stack',
-        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-      });
-
-      const userMessage =
-        error.code === 'NETWORK_ERROR' || error.code === 'INTERNET_ERROR'
-          ? 'Please check your internet connection and try again.'
-          : 'Could not complete purchase. Please try again later.';
-
-      throw new RevenueCatError(
-        error.code === 'NETWORK_ERROR'
-          ? RevenueCatErrorCode.NETWORK_ERROR
-          : RevenueCatErrorCode.SERVER_ERROR,
-        userMessage,
-      );
+    } catch (error) {
+      console.error('Error purchasing product:', error);
+      throw error;
     }
   },
 
@@ -390,13 +220,119 @@ export const IAPService = {
    * Cleanup RevenueCat resources
    */
   cleanup(): void {
+    // RevenueCat doesn't require explicit cleanup, but we can reset callbacks
     this.onPurchaseSuccess = null;
     this.onPurchaseError = null;
   },
 
-  /**
-   * Callbacks (set by app)
-   */
+  // Callbacks (set by the app)
   onPurchaseSuccess: null as ((customerInfo: CustomerInfo) => void) | null,
   onPurchaseError: null as ((error: any) => void) | null,
 };
+
+/**
+ * Helper to check if a level pack is purchased
+ */
+export function isLevelPackPurchased(
+  packId: string,
+  customerInfo: CustomerInfo,
+): boolean {
+  return customerInfo.entitlements.active[packId] !== undefined;
+}
+
+/**
+ * Get level pack product ID by pack number
+ */
+export function getLevelPackProductId(packNumber: number): string {
+  switch (packNumber) {
+    case 1:
+      return IAP_PRODUCTS.LEVEL_PACK_1;
+    case 2:
+      return IAP_PRODUCTS.LEVEL_PACK_2;
+    case 3:
+      return IAP_PRODUCTS.LEVEL_PACK_3;
+    default:
+      return IAP_PRODUCTS.LEVEL_PACK_1;
+  }
+}
+
+/**
+ * Helper to check if premium is active
+ */
+export function isPremiumActive(customerInfo: CustomerInfo): boolean {
+  return customerInfo.entitlements.active['premium'] !== undefined;
+}
+
+/**
+ * Get coin amount for a product ID
+ */
+export function getCoinAmountForProduct(productId: string): number {
+  const {COIN_AMOUNTS} = require('@/config/constants');
+
+  switch (productId) {
+    case IAP_PRODUCTS.COINS_SMALL:
+      return COIN_AMOUNTS.SMALL;
+    case IAP_PRODUCTS.COINS_MEDIUM:
+      return COIN_AMOUNTS.MEDIUM;
+    case IAP_PRODUCTS.COINS_LARGE:
+      return COIN_AMOUNTS.LARGE;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Sync purchases from RevenueCat with local user profile
+ * This ensures the local state matches what RevenueCat has on record
+ */
+export async function syncPurchasesWithRevenueCat(
+  currentProfile: UserProfile,
+): Promise<UserProfile> {
+  if (!IAPService.isAvailable) {
+    console.warn(
+      'RevenueCat not available - skipping purchase sync (running in Expo Go)',
+    );
+    return currentProfile;
+  }
+
+  try {
+    const customerInfo = await IAPService.getCustomerInfo();
+
+    const updatedProfile = {...currentProfile};
+
+    // Sync level pack purchases
+    const purchasedLevels = new Set<number>(currentProfile.purchasedLevels);
+
+    if (customerInfo.entitlements.active['level_pack_2']) {
+      // Add levels 21-40
+      for (let i = 21; i <= 40; i++) {
+        purchasedLevels.add(i);
+      }
+    }
+
+    if (customerInfo.entitlements.active['level_pack_3']) {
+      // Add levels 41-60
+      for (let i = 41; i <= 60; i++) {
+        purchasedLevels.add(i);
+      }
+    }
+
+    updatedProfile.purchasedLevels = Array.from(purchasedLevels).sort(
+      (a, b) => a - b,
+    );
+
+    // Sync premium status
+    updatedProfile.hasPremium = isPremiumActive(customerInfo);
+
+    console.log('Synced purchases with RevenueCat:', {
+      purchasedLevels: updatedProfile.purchasedLevels.length,
+      hasPremium: updatedProfile.hasPremium,
+    });
+
+    return updatedProfile;
+  } catch (error) {
+    console.error('Error syncing purchases:', error);
+    // Return original profile if sync fails
+    return currentProfile;
+  }
+}
