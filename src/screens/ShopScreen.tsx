@@ -582,6 +582,8 @@ const styles = StyleSheet.create({
   featureList: {
     width: '100%',
     marginBottom: 10,
+    minHeight: 54,
+    justifyContent: 'flex-start',
   },
   featureText: {
     fontSize: 12,
