@@ -15,8 +15,8 @@ import {GameBoard} from '@/components/GameBoard';
 import {WordInput} from '@/components/WordInput';
 import {ScoreDisplay} from '@/components/ScoreDisplay';
 import {ParticleEffect} from '@/components/ParticleEffect';
-import {GAME_CONFIG, ANIMATIONS} from '@/config/constants';
-import {Letter, GameState, Level, Word} from '@/types/game';
+import {GAME_CONFIG, ANIMATIONS, POWER_UPS} from '@/config/constants';
+import {Letter, GameState, Level, Word, UserProfile} from '@/types/game';
 import {
   validateWord,
   createLetterGrid,
@@ -37,6 +37,8 @@ export const GameScreen: React.FC<Props> = ({
   onLevelComplete,
   onQuit,
 }) => {
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [coins, setCoins] = useState(0);
   const [gameState, setGameState] = useState<GameState>({
     currentLevel: level.id,
     score: 0,
@@ -61,8 +63,23 @@ export const GameScreen: React.FC<Props> = ({
     undefined,
   );
 
+  const hintCost =
+    POWER_UPS.find(powerUp => powerUp.id === 'hint')?.cost ?? 50;
+
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
   const particleTimeoutsRef = React.useRef<NodeJS.Timeout[]>([]);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const profile = await getUserProfile();
+      if (profile) {
+        setUserProfile(profile);
+        setCoins(profile.coins);
+      }
+    };
+
+    loadProfile();
+  }, []);
 
   // Timer effect - only set up once, not on every timeRemaining change
   useEffect(() => {
@@ -279,12 +296,7 @@ export const GameScreen: React.FC<Props> = ({
     setIsValidWord(undefined);
   }, []);
 
-  const handleHint = useCallback(() => {
-    if (gameState.hints <= 0) {
-      Alert.alert('No Hints', 'You have no hints remaining!');
-      return;
-    }
-
+  const revealHint = useCallback(() => {
     const hint = getHintWord(
       level.id,
       gameState.foundWords.map(w => w.word),
@@ -292,11 +304,48 @@ export const GameScreen: React.FC<Props> = ({
 
     if (hint) {
       Alert.alert('Hint', `Try finding: ${hint.toUpperCase()}`);
-      setGameState(prev => ({...prev, hints: prev.hints - 1}));
+      setGameState(prev => ({...prev, hints: Math.max(prev.hints - 1, 0)}));
     } else {
       Alert.alert('No Hints', 'No more words available!');
     }
-  }, [level.id, gameState.foundWords, gameState.hints]);
+  }, [level.id, gameState.foundWords]);
+
+  const handleHint = useCallback(() => {
+    if (gameState.hints > 0) {
+      revealHint();
+      return;
+    }
+
+    if (!userProfile || coins < hintCost) {
+      Alert.alert(
+        'Not Enough Coins',
+        `Hints cost ${hintCost} coins. You have ${coins} coins.`,
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Buy a Hint?',
+      `Spend ${hintCost} coins to reveal a word?`,
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Buy Hint',
+          onPress: async () => {
+            const updatedProfile = {
+              ...userProfile,
+              coins: userProfile.coins - hintCost,
+            };
+            setUserProfile(updatedProfile);
+            setCoins(updatedProfile.coins);
+            await saveUserProfile(updatedProfile);
+            setGameState(prev => ({...prev, hints: prev.hints + 1}));
+            setTimeout(() => revealHint(), 0);
+          },
+        },
+      ],
+    );
+  }, [coins, gameState.hints, hintCost, revealHint, userProfile]);
 
   const handleLevelComplete = () => {
     const stars = calculateStars(gameState.score, level.targetScore);

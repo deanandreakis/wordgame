@@ -15,6 +15,7 @@ import {
   IAP_PRODUCTS,
   COIN_AMOUNTS,
   IAP_PRICING,
+  POWER_UPS,
 } from '@/config/constants';
 import {IAPService} from '@/services/iap';
 import {getUserProfile} from '@/utils/storage';
@@ -102,31 +103,41 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
   };
 
   const hasPremium = userProfile?.hasPremium ?? false;
+  const hintCost = POWER_UPS.find(powerUp => powerUp.id === 'hint')?.cost ?? 50;
+  const getHintCount = (amount: number) => Math.floor(amount / hintCost);
 
   const coinPackages = [
     {
       productId: IAP_PRODUCTS.COINS_SMALL,
       amount: COIN_AMOUNTS.SMALL,
       badge: null,
-      description: 'Get 250 coins',
-      features: ['Buy 3 hints', 'Shuffle 2×', '1 time freeze'],
+      description: 'Use coins to buy hints in levels',
+      features: [
+        `${getHintCount(COIN_AMOUNTS.SMALL)} hints`,
+        'Reveal a valid word',
+        `${hintCost} coins per hint`,
+      ],
     },
     {
       productId: IAP_PRODUCTS.COINS_MEDIUM,
       amount: COIN_AMOUNTS.MEDIUM,
       badge: null,
-      description: 'Get 1000 coins',
-      features: ['Buy 15 hints', 'Shuffle 8×', '4 time freezes'],
+      description: 'Stock up on extra hints',
+      features: [
+        `${getHintCount(COIN_AMOUNTS.MEDIUM)} hints`,
+        'Reveal a valid word',
+        `${hintCost} coins per hint`,
+      ],
     },
     {
       productId: IAP_PRODUCTS.COINS_LARGE,
       amount: COIN_AMOUNTS.LARGE,
       badge: 'Best Value',
-      description: 'Get 3000 coins',
+      description: 'Best value for frequent hints',
       features: [
-        'Unlimited hints',
-        'Unlimited shuffles',
-        'Unlimited time freezes',
+        `${getHintCount(COIN_AMOUNTS.LARGE)} hints`,
+        'Reveal a valid word',
+        `${hintCost} coins per hint`,
       ],
     },
   ];
