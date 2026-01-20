@@ -14,7 +14,7 @@ export const GAME_CONFIG = {
   },
   FREE_LEVELS: 20,
   // Set to true to unlock all levels for testing in Expo Go
-  TESTING_MODE: true,
+  TESTING_MODE: __DEV__,
   // Set to false before production release to hide debug logs button
   SHOW_DEBUG_LOGS: true,
   COLORS: {
