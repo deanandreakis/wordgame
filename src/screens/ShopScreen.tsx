@@ -105,15 +105,18 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
   const hasPremium = userProfile?.hasPremium ?? false;
   const hintCost = POWER_UPS.find(powerUp => powerUp.id === 'hint')?.cost ?? 50;
   const getHintCount = (amount: number) => Math.floor(amount / hintCost);
+  const smallHintCount = getHintCount(COIN_AMOUNTS.SMALL);
+  const mediumHintCount = getHintCount(COIN_AMOUNTS.MEDIUM);
+  const largeHintCount = getHintCount(COIN_AMOUNTS.LARGE);
 
   const coinPackages = [
     {
       productId: IAP_PRODUCTS.COINS_SMALL,
       amount: COIN_AMOUNTS.SMALL,
       badge: null,
-      description: 'Use coins to buy hints in levels',
+      description: `Use coins to buy hints (${smallHintCount})`,
       features: [
-        `${getHintCount(COIN_AMOUNTS.SMALL)} hints`,
+        `${smallHintCount} hints`,
         'Reveal a valid word',
         `${hintCost} coins per hint`,
       ],
@@ -122,9 +125,9 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
       productId: IAP_PRODUCTS.COINS_MEDIUM,
       amount: COIN_AMOUNTS.MEDIUM,
       badge: null,
-      description: 'Stock up on extra hints',
+      description: `Stock up on extra hints (${mediumHintCount})`,
       features: [
-        `${getHintCount(COIN_AMOUNTS.MEDIUM)} hints`,
+        `${mediumHintCount} hints`,
         'Reveal a valid word',
         `${hintCost} coins per hint`,
       ],
@@ -133,9 +136,9 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
       productId: IAP_PRODUCTS.COINS_LARGE,
       amount: COIN_AMOUNTS.LARGE,
       badge: 'Best Value',
-      description: 'Best value for frequent hints',
+      description: `Best value for frequent hints (${largeHintCount})`,
       features: [
-        `${getHintCount(COIN_AMOUNTS.LARGE)} hints`,
+        `${largeHintCount} hints`,
         'Reveal a valid word',
         `${hintCost} coins per hint`,
       ],
