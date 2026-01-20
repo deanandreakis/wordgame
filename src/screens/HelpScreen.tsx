@@ -120,10 +120,10 @@ export const HelpScreen: React.FC<Props> = ({onBack}) => {
                   </Text>
                 </View>
                 <View style={styles.feature}>
-                  <Text style={styles.featureIcon}>❤️</Text>
-                  <Text style={styles.featureTitle}>Lives</Text>
+                  <Text style={styles.featureIcon}>🎯</Text>
+                  <Text style={styles.featureTitle}>Target Score</Text>
                   <Text style={styles.featureDesc}>
-                    You start with 3 lives. Don't let them run out!
+                    Hit the target score to complete the level.
                   </Text>
                 </View>
               </View>
