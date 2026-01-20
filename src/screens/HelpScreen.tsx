@@ -36,7 +36,7 @@ export const HelpScreen: React.FC<Props> = ({onBack}) => {
               <Text style={styles.sectionTitle}>🎯 Objective</Text>
               <Text style={styles.text}>
                 Form valid words by selecting adjacent letters on the grid. Reach the target
-                score before time runs out to complete each level!
+                score to complete each level.
               </Text>
             </LinearGradient>
           </View>
@@ -113,10 +113,10 @@ export const HelpScreen: React.FC<Props> = ({onBack}) => {
               <Text style={styles.sectionTitle}>✨ Special Features</Text>
               <View style={styles.featureRow}>
                 <View style={styles.feature}>
-                  <Text style={styles.featureIcon}>⏱️</Text>
-                  <Text style={styles.featureTitle}>Time Limit</Text>
+                  <Text style={styles.featureIcon}>🔥</Text>
+                  <Text style={styles.featureTitle}>Streaks</Text>
                   <Text style={styles.featureDesc}>
-                    Beat the clock! Most levels have a time limit.
+                    Find words back-to-back to build a streak bonus.
                   </Text>
                 </View>
                 <View style={styles.feature}>
