@@ -81,6 +81,15 @@
 #         sed 's/.*<string>\(.*\)<\/string>.*/\1/'
 #      Value format: 10-character alphanumeric (e.g., 6XBQPB83GR)
 #
+# 5. REVENUECAT_IOS_API_KEY
+#    Description: RevenueCat iOS API key for in-app purchases
+#    How to find:
+#      a. Go to https://app.revenuecat.com
+#      b. Select your app (LetterLoom)
+#      c. Go to API Keys section
+#      d. Copy the "Public app-specific API key" for iOS
+#      Value format: appl_XXXXXXXXXXXXXXXXXXXXXXXX
+#
 # ============================================================================
 # ADDITIONAL SECRETS (only needed for App Store builds):
 # ============================================================================
@@ -328,6 +337,9 @@ jobs:
           fi
 
       - name: 📱 Generate iOS Native Project (Expo Prebuild)
+        env:
+          REVENUECAT_IOS_API_KEY: ${{ secrets.REVENUECAT_IOS_API_KEY }}
+          REVENUECAT_ANDROID_API_KEY: ${{ secrets.REVENUECAT_ANDROID_API_KEY }}
         run: npx expo prebuild --platform ios --clean
 
       - name: 🔍 Verify GameCenter Entitlements
