@@ -66,6 +66,14 @@ export const IAPService = {
           ? Constants.expoConfig?.extra?.revenueCat?.iosApiKey
           : Constants.expoConfig?.extra?.revenueCat?.androidApiKey;
 
+      // Debug logging to diagnose API key issues
+      console.log('[IAP Debug] Platform:', Platform.OS);
+      console.log('[IAP Debug] expoConfig exists:', !!Constants.expoConfig);
+      console.log('[IAP Debug] extra exists:', !!Constants.expoConfig?.extra);
+      console.log('[IAP Debug] revenueCat exists:', !!Constants.expoConfig?.extra?.revenueCat);
+      console.log('[IAP Debug] apiKey exists:', !!apiKey);
+      console.log('[IAP Debug] apiKey length:', apiKey?.length || 0);
+
       if (!apiKey) {
         throw new Error(
           `RevenueCat API key not found for ${Platform.OS}. Please check your environment variables and app.config.js`,

@@ -342,6 +342,36 @@ jobs:
           REVENUECAT_ANDROID_API_KEY: ${{ secrets.REVENUECAT_ANDROID_API_KEY }}
         run: npx expo prebuild --platform ios --clean
 
+      - name: 🔍 Verify RevenueCat API Key in Build
+        run: |
+          echo "Checking if RevenueCat API key was embedded..."
+          if [ -n "${{ secrets.REVENUECAT_IOS_API_KEY }}" ]; then
+            echo "✅ REVENUECAT_IOS_API_KEY secret is set in GitHub"
+          else
+            echo "❌ REVENUECAT_IOS_API_KEY secret is NOT set in GitHub"
+          fi
+
+          # Check if the key made it into the Expo config
+          if [ -f "ios/LetterLoom/Supporting/Expo.plist" ]; then
+            echo "Checking Expo.plist for revenueCat config..."
+            if grep -q "revenueCat" ios/LetterLoom/Supporting/Expo.plist; then
+              echo "✅ revenueCat config found in Expo.plist"
+              # Check if apiKey has a value (not empty)
+              if grep -A 2 "iosApiKey" ios/LetterLoom/Supporting/Expo.plist | grep -q "appl_"; then
+                echo "✅ iOS API key appears to be set (starts with appl_)"
+              else
+                echo "⚠️ iOS API key may be empty or not set correctly"
+                grep -A 5 "revenueCat" ios/LetterLoom/Supporting/Expo.plist || true
+              fi
+            else
+              echo "❌ revenueCat config NOT found in Expo.plist"
+              cat ios/LetterLoom/Supporting/Expo.plist
+            fi
+          else
+            echo "Expo.plist not found at expected location, searching..."
+            find ios -name "Expo.plist" -o -name "*.plist" | head -10
+          fi
+
       - name: 🔍 Verify GameCenter Entitlements
         run: |
           echo "Checking for entitlements file..."
