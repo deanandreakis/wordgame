@@ -336,41 +336,30 @@ jobs:
             echo "type=adhoc" >> $GITHUB_OUTPUT
           fi
 
-      - name: 📱 Generate iOS Native Project (Expo Prebuild)
-        env:
-          REVENUECAT_IOS_API_KEY: ${{ secrets.REVENUECAT_IOS_API_KEY }}
-          REVENUECAT_ANDROID_API_KEY: ${{ secrets.REVENUECAT_ANDROID_API_KEY }}
-        run: npx expo prebuild --platform ios --clean
-
-      - name: 🔍 Verify RevenueCat API Key in Build
+      - name: 🔐 Inject Runtime Secrets
         run: |
-          echo "Checking if RevenueCat API key was embedded..."
-          if [ -n "${{ secrets.REVENUECAT_IOS_API_KEY }}" ]; then
-            echo "✅ REVENUECAT_IOS_API_KEY secret is set in GitHub"
-          else
-            echo "❌ REVENUECAT_IOS_API_KEY secret is NOT set in GitHub"
-          fi
+          echo "Injecting RevenueCat API keys into secrets.ts..."
+          SECRETS_FILE="src/config/secrets.ts"
 
-          # Check if the key made it into the Expo config
-          if [ -f "ios/LetterLoom/Supporting/Expo.plist" ]; then
-            echo "Checking Expo.plist for revenueCat config..."
-            if grep -q "revenueCat" ios/LetterLoom/Supporting/Expo.plist; then
-              echo "✅ revenueCat config found in Expo.plist"
-              # Check if apiKey has a value (not empty)
-              if grep -A 2 "iosApiKey" ios/LetterLoom/Supporting/Expo.plist | grep -q "appl_"; then
-                echo "✅ iOS API key appears to be set (starts with appl_)"
-              else
-                echo "⚠️ iOS API key may be empty or not set correctly"
-                grep -A 5 "revenueCat" ios/LetterLoom/Supporting/Expo.plist || true
-              fi
+          if [ -f "$SECRETS_FILE" ]; then
+            # Replace placeholders with actual secrets
+            sed -i "s|__REVENUECAT_IOS_API_KEY__|${{ secrets.REVENUECAT_IOS_API_KEY }}|g" "$SECRETS_FILE"
+            sed -i "s|__REVENUECAT_ANDROID_API_KEY__|${{ secrets.REVENUECAT_ANDROID_API_KEY }}|g" "$SECRETS_FILE"
+            echo "✅ Secrets injected successfully"
+
+            # Verify (without exposing the actual keys)
+            if grep -q "__REVENUECAT_IOS_API_KEY__" "$SECRETS_FILE"; then
+              echo "❌ iOS API key placeholder was NOT replaced"
             else
-              echo "❌ revenueCat config NOT found in Expo.plist"
-              cat ios/LetterLoom/Supporting/Expo.plist
+              echo "✅ iOS API key placeholder was replaced"
             fi
           else
-            echo "Expo.plist not found at expected location, searching..."
-            find ios -name "Expo.plist" -o -name "*.plist" | head -10
+            echo "❌ secrets.ts file not found!"
+            exit 1
           fi
+
+      - name: 📱 Generate iOS Native Project (Expo Prebuild)
+        run: npx expo prebuild --platform ios --clean
 
       - name: 🔍 Verify GameCenter Entitlements
         run: |

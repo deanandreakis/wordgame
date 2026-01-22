@@ -60,11 +60,7 @@ module.exports = {
       eas: {
         projectId: process.env.EXPO_PROJECT_ID || 'your-project-id-here',
       },
-      // RevenueCat API keys - accessible via expo-constants
-      revenueCat: {
-        iosApiKey: process.env.REVENUECAT_IOS_API_KEY,
-        androidApiKey: process.env.REVENUECAT_ANDROID_API_KEY,
-      },
+      // Note: RevenueCat API keys are injected via src/config/secrets.ts during CI/CD builds
     },
     owner: process.env.EXPO_OWNER || 'your-expo-username',
   },

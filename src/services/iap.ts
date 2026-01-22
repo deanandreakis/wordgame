@@ -4,8 +4,8 @@ import type {
   PurchasesPackage,
   CustomerInfo,
 } from 'react-native-purchases';
-import Constants from 'expo-constants';
 import {IAP_PRODUCTS} from '@/config/constants';
+import {RUNTIME_SECRETS} from '@/config/secrets';
 import type {UserProfile} from '@/types/game';
 
 /**
@@ -60,23 +60,22 @@ export const IAPService = {
     }
 
     try {
-      // Get API key based on platform from expo-constants
+      // Get API key based on platform from runtime secrets
       const apiKey =
         Platform.OS === 'ios'
-          ? Constants.expoConfig?.extra?.revenueCat?.iosApiKey
-          : Constants.expoConfig?.extra?.revenueCat?.androidApiKey;
+          ? RUNTIME_SECRETS.REVENUECAT_IOS_API_KEY
+          : RUNTIME_SECRETS.REVENUECAT_ANDROID_API_KEY;
 
       // Debug logging to diagnose API key issues
       console.log('[IAP Debug] Platform:', Platform.OS);
-      console.log('[IAP Debug] expoConfig exists:', !!Constants.expoConfig);
-      console.log('[IAP Debug] extra exists:', !!Constants.expoConfig?.extra);
-      console.log('[IAP Debug] revenueCat exists:', !!Constants.expoConfig?.extra?.revenueCat);
-      console.log('[IAP Debug] apiKey exists:', !!apiKey);
+      console.log('[IAP Debug] apiKey exists:', !!apiKey && !apiKey.includes('__'));
       console.log('[IAP Debug] apiKey length:', apiKey?.length || 0);
+      console.log('[IAP Debug] apiKey is placeholder:', apiKey?.includes('__') || false);
 
-      if (!apiKey) {
+      // Check if the API key is still a placeholder (not replaced during build)
+      if (!apiKey || apiKey.includes('__REVENUECAT_')) {
         throw new Error(
-          `RevenueCat API key not found for ${Platform.OS}. Please check your environment variables and app.config.js`,
+          `RevenueCat API key not found for ${Platform.OS}. The secret was not injected during the build process.`,
         );
       }
 
