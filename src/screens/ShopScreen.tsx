@@ -316,80 +316,83 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
           {!hasPremium && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>📚 Level Packs</Text>
-              <View style={styles.grid}>
-                {levelPackages.map(item => {
-                  const pkg = findPackage(item.productId);
-                  const packNumber =
-                    item.productId === IAP_PRODUCTS.LEVEL_PACK_1
-                      ? 1
-                      : item.productId === IAP_PRODUCTS.LEVEL_PACK_2
-                        ? 2
-                        : 3;
-                  const isOwned = userProfile?.purchasedLevels?.some(
-                    level =>
-                      level >= (packNumber - 1) * 20 + 1 &&
-                      level <= packNumber * 20,
-                  );
+              {/* Render in rows of 2 for equal heights */}
+              {[0, 2].map(rowStart => (
+                <View key={rowStart} style={styles.gridRow}>
+                  {levelPackages.slice(rowStart, rowStart + 2).map(item => {
+                    const pkg = findPackage(item.productId);
+                    const packNumber =
+                      item.productId === IAP_PRODUCTS.LEVEL_PACK_1
+                        ? 1
+                        : item.productId === IAP_PRODUCTS.LEVEL_PACK_2
+                          ? 2
+                          : 3;
+                    const isOwned = userProfile?.purchasedLevels?.some(
+                      level =>
+                        level >= (packNumber - 1) * 20 + 1 &&
+                        level <= packNumber * 20,
+                    );
 
-                  return (
-                    <View key={item.productId} style={styles.productCard}>
-                      <LinearGradient
-                        colors={[
-                          GAME_CONFIG.COLORS.cardBg,
-                          GAME_CONFIG.COLORS.tile,
-                        ]}
-                        style={styles.productGradient}>
-                        {isOwned && (
-                          <View style={styles.ownedBadge}>
-                            <Text style={styles.ownedBadgeText}>✓ Owned</Text>
+                    return (
+                      <View key={item.productId} style={styles.productCardFlex}>
+                        <LinearGradient
+                          colors={[
+                            GAME_CONFIG.COLORS.cardBg,
+                            GAME_CONFIG.COLORS.tile,
+                          ]}
+                          style={styles.productGradientFlex}>
+                          {isOwned && (
+                            <View style={styles.ownedBadge}>
+                              <Text style={styles.ownedBadgeText}>✓ Owned</Text>
+                            </View>
+                          )}
+                          <Text style={styles.productIcon}>📚</Text>
+                          <Text style={styles.productTitle}>
+                            Level Pack {packNumber}
+                          </Text>
+                          <Text style={styles.productSubtitle}>
+                            Levels {item.levelsRange}
+                          </Text>
+                          <Text style={styles.productDescription}>
+                            {item.description}
+                          </Text>
+                          <View style={styles.featureListFlex}>
+                            {item.features.map(feature => (
+                              <Text key={feature} style={styles.featureText}>
+                                • {feature}
+                              </Text>
+                            ))}
                           </View>
-                        )}
-                        <Text style={styles.productIcon}>📚</Text>
-                        <Text style={styles.productTitle}>
-                          Level Pack {packNumber}
-                        </Text>
-                        <Text style={styles.productSubtitle}>
-                          Levels {item.levelsRange}
-                        </Text>
-                        <Text style={styles.productDescription}>
-                          {item.description}
-                        </Text>
-                        <View style={styles.featureList}>
-                          {item.features.map(feature => (
-                            <Text key={feature} style={styles.featureText}>
-                              • {feature}
-                            </Text>
-                          ))}
-                        </View>
-                        <TouchableOpacity
-                          style={styles.buyButton}
-                          onPress={() => pkg && handlePurchase(pkg)}
-                          disabled={purchasing || !pkg || isOwned}>
-                          <LinearGradient
-                            colors={
-                              isOwned
-                                ? [
-                                    GAME_CONFIG.COLORS.textSecondary,
-                                    GAME_CONFIG.COLORS.textSecondary,
-                                  ]
-                                : [
-                                    GAME_CONFIG.COLORS.primary,
-                                    GAME_CONFIG.COLORS.secondary,
-                                  ]
-                            }
-                            style={styles.buyButtonGradient}>
-                            <Text style={styles.buyButtonText}>
-                              {isOwned
-                                ? 'Owned'
-                                : formatPrice(item.productId, pkg)}
-                            </Text>
-                          </LinearGradient>
-                        </TouchableOpacity>
-                      </LinearGradient>
-                    </View>
-                  );
-                })}
-              </View>
+                          <TouchableOpacity
+                            style={styles.buyButton}
+                            onPress={() => pkg && handlePurchase(pkg)}
+                            disabled={purchasing || !pkg || isOwned}>
+                            <LinearGradient
+                              colors={
+                                isOwned
+                                  ? [
+                                      GAME_CONFIG.COLORS.textSecondary,
+                                      GAME_CONFIG.COLORS.textSecondary,
+                                    ]
+                                  : [
+                                      GAME_CONFIG.COLORS.primary,
+                                      GAME_CONFIG.COLORS.secondary,
+                                    ]
+                              }
+                              style={styles.buyButtonGradient}>
+                              <Text style={styles.buyButtonText}>
+                                {isOwned
+                                  ? 'Owned'
+                                  : formatPrice(item.productId, pkg)}
+                              </Text>
+                            </LinearGradient>
+                          </TouchableOpacity>
+                        </LinearGradient>
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
             </View>
           )}
 
@@ -521,8 +524,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginHorizontal: -6,
   },
+  gridRow: {
+    flexDirection: 'row',
+    marginHorizontal: -6,
+    marginBottom: 12,
+  },
   productCard: {
     width: '50%',
+    padding: 6,
+  },
+  productCardFlex: {
+    flex: 1,
     padding: 6,
   },
   productGradient: {
@@ -530,6 +542,12 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     minHeight: 220,
+  },
+  productGradientFlex: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
   },
   badge: {
     position: 'absolute',
@@ -597,6 +615,12 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 10,
     minHeight: 54,
+    justifyContent: 'flex-start',
+  },
+  featureListFlex: {
+    flex: 1,
+    width: '100%',
+    marginBottom: 10,
     justifyContent: 'flex-start',
   },
   featureText: {
