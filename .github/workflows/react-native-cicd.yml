@@ -337,14 +337,17 @@ jobs:
           fi
 
       - name: 🔐 Inject Runtime Secrets
+        env:
+          RC_IOS_KEY: ${{ secrets.REVENUECAT_IOS_API_KEY }}
+          RC_ANDROID_KEY: ${{ secrets.REVENUECAT_ANDROID_API_KEY }}
         run: |
           echo "Injecting RevenueCat API keys into secrets.ts..."
           SECRETS_FILE="src/config/secrets.ts"
 
           if [ -f "$SECRETS_FILE" ]; then
-            # Replace placeholders with actual secrets
-            sed -i "s|__REVENUECAT_IOS_API_KEY__|${{ secrets.REVENUECAT_IOS_API_KEY }}|g" "$SECRETS_FILE"
-            sed -i "s|__REVENUECAT_ANDROID_API_KEY__|${{ secrets.REVENUECAT_ANDROID_API_KEY }}|g" "$SECRETS_FILE"
+            # Use perl for reliable cross-platform replacement (handles special chars)
+            perl -i -pe "s|__REVENUECAT_IOS_API_KEY__|$RC_IOS_KEY|g" "$SECRETS_FILE"
+            perl -i -pe "s|__REVENUECAT_ANDROID_API_KEY__|$RC_ANDROID_KEY|g" "$SECRETS_FILE"
             echo "✅ Secrets injected successfully"
 
             # Verify (without exposing the actual keys)
