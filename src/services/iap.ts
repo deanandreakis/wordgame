@@ -66,12 +66,6 @@ export const IAPService = {
           ? RUNTIME_SECRETS.REVENUECAT_IOS_API_KEY
           : RUNTIME_SECRETS.REVENUECAT_ANDROID_API_KEY;
 
-      // Debug logging to diagnose API key issues
-      console.log('[IAP Debug] Platform:', Platform.OS);
-      console.log('[IAP Debug] apiKey exists:', !!apiKey && !apiKey.includes('__'));
-      console.log('[IAP Debug] apiKey length:', apiKey?.length || 0);
-      console.log('[IAP Debug] apiKey is placeholder:', apiKey?.includes('__') || false);
-
       // Check if the API key is still a placeholder (not replaced during build)
       if (!apiKey || apiKey.includes('__REVENUECAT_')) {
         throw new Error(
