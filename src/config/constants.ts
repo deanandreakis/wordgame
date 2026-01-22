@@ -16,7 +16,7 @@ export const GAME_CONFIG = {
   // Set to true to unlock all levels for testing in Expo Go
   TESTING_MODE: __DEV__,
   // Set to false before production release to hide debug logs button
-  SHOW_DEBUG_LOGS: true,
+  SHOW_DEBUG_LOGS: false,
   COLORS: {
     // PRIMARY GREENS - Nature/Forest theme
     primary: '#2D5F3F', // Deep Forest Green (was #6C5CE7 purple)

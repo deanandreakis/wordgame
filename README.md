@@ -319,10 +319,10 @@ npm run test:coverage
 | Level Pack 1 | Levels 21-40 | $2.99 |
 | Level Pack 2 | Levels 41-60 | $2.99 |
 | Level Pack 3 | Levels 61-80 | $2.99 |
-| Small Coins | 500 coins | $0.99 |
-| Medium Coins | 1,500 coins | $2.99 |
-| Large Coins | 5,000 coins | $7.99 |
-| Premium Unlock | All levels + no ads | $9.99 |
+| Small Coins | 250 coins | $0.99 |
+| Medium Coins | 1,000 coins | $2.99 |
+| Large Coins | 3,000 coins | $7.99 |
+| Premium Unlock | All levels + 2x coin rewards | $9.99 |
 
 ### Engagement Loop
 1. **Free levels** hook players
