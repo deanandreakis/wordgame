@@ -22,8 +22,6 @@ module.exports = {
       buildNumber: '1',
       infoPlist: {
         UIBackgroundModes: [],
-        NSUserTrackingUsageDescription:
-          'This identifier will be used to deliver personalized ads to you.',
       },
       config: {
         usesNonExemptEncryption: false,

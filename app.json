@@ -22,8 +22,7 @@
         "com.apple.developer.game-center": true
       },
       "infoPlist": {
-        "UIBackgroundModes": [],
-        "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
+        "UIBackgroundModes": []
       },
       "config": {
         "usesNonExemptEncryption": false
