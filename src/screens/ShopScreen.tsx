@@ -261,62 +261,68 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
           {/* Coin Packs */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>🪙 Coin Packs</Text>
-            <View style={styles.grid}>
-              {coinPackages.map(item => {
-                const pkg = findPackage(item.productId);
-                return (
-                  <View key={item.productId} style={styles.productCard}>
-                    <LinearGradient
-                      colors={[
-                        GAME_CONFIG.COLORS.cardBg,
-                        GAME_CONFIG.COLORS.tile,
-                      ]}
-                      style={styles.productGradient}>
-                      {item.badge && (
-                        <View style={styles.badge}>
-                          <Text style={styles.badgeText}>{item.badge}</Text>
+            {[0, 2].map(rowStart => (
+              <View key={rowStart} style={styles.gridRow}>
+                {coinPackages.slice(rowStart, rowStart + 2).map(item => {
+                  const pkg = findPackage(item.productId);
+                  return (
+                    <View key={item.productId} style={styles.productCard}>
+                      <LinearGradient
+                        colors={[
+                          GAME_CONFIG.COLORS.cardBg,
+                          GAME_CONFIG.COLORS.tile,
+                        ]}
+                        style={styles.productGradient}>
+                        {item.badge && (
+                          <View style={styles.badge}>
+                            <Text style={styles.badgeText}>{item.badge}</Text>
+                          </View>
+                        )}
+                        <Text style={styles.productIcon}>🪙</Text>
+                        <Text style={styles.productAmount}>{item.amount}</Text>
+                        <Text style={styles.productLabel}>Coins</Text>
+                        <Text
+                          style={styles.productDescription}
+                          numberOfLines={2}>
+                          {item.description}
+                        </Text>
+                        <View style={styles.featureList}>
+                          {item.features.map(feature => (
+                            <Text
+                              key={feature}
+                              style={styles.featureText}
+                              numberOfLines={1}>
+                              • {feature}
+                            </Text>
+                          ))}
                         </View>
-                      )}
-                      <Text style={styles.productIcon}>🪙</Text>
-                      <Text style={styles.productAmount}>{item.amount}</Text>
-                      <Text style={styles.productLabel}>Coins</Text>
-                      <Text style={styles.productDescription}>
-                        {item.description}
-                      </Text>
-                      <View style={styles.featureList}>
-                        {item.features.map(feature => (
-                          <Text key={feature} style={styles.featureText}>
-                            • {feature}
-                          </Text>
-                        ))}
-                      </View>
-                      <TouchableOpacity
-                        style={styles.buyButton}
-                        onPress={() => pkg && handlePurchase(pkg)}
-                        disabled={purchasing || !pkg}>
-                        <LinearGradient
-                          colors={[
-                            GAME_CONFIG.COLORS.primary,
-                            GAME_CONFIG.COLORS.secondary,
-                          ]}
-                          style={styles.buyButtonGradient}>
-                          <Text style={styles.buyButtonText}>
-                            {formatPrice(item.productId, pkg)}
-                          </Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </LinearGradient>
-                  </View>
-                );
-              })}
-            </View>
+                        <TouchableOpacity
+                          style={styles.buyButton}
+                          onPress={() => pkg && handlePurchase(pkg)}
+                          disabled={purchasing || !pkg}>
+                          <LinearGradient
+                            colors={[
+                              GAME_CONFIG.COLORS.primary,
+                              GAME_CONFIG.COLORS.secondary,
+                            ]}
+                            style={styles.buyButtonGradient}>
+                            <Text style={styles.buyButtonText}>
+                              {formatPrice(item.productId, pkg)}
+                            </Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      </LinearGradient>
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
           </View>
 
           {/* Level Packs */}
           {!hasPremium && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>📚 Level Packs</Text>
-              {/* Render in rows of 2 for equal heights */}
               {[0, 2].map(rowStart => (
                 <View key={rowStart} style={styles.gridRow}>
                   {levelPackages.slice(rowStart, rowStart + 2).map(item => {
@@ -334,13 +340,13 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                     );
 
                     return (
-                      <View key={item.productId} style={styles.productCardFlex}>
+                      <View key={item.productId} style={styles.productCard}>
                         <LinearGradient
                           colors={[
                             GAME_CONFIG.COLORS.cardBg,
                             GAME_CONFIG.COLORS.tile,
                           ]}
-                          style={styles.productGradientFlex}>
+                          style={styles.productGradient}>
                           {isOwned && (
                             <View style={styles.ownedBadge}>
                               <Text style={styles.ownedBadgeText}>✓ Owned</Text>
@@ -353,12 +359,17 @@ export const ShopScreen: React.FC<Props> = ({onBack, userProfile}) => {
                           <Text style={styles.productSubtitle}>
                             Levels {item.levelsRange}
                           </Text>
-                          <Text style={styles.productDescription}>
+                          <Text
+                            style={styles.productDescription}
+                            numberOfLines={2}>
                             {item.description}
                           </Text>
-                          <View style={styles.featureListFlex}>
+                          <View style={styles.featureList}>
                             {item.features.map(feature => (
-                              <Text key={feature} style={styles.featureText}>
+                              <Text
+                                key={feature}
+                                style={styles.featureText}
+                                numberOfLines={1}>
                                 • {feature}
                               </Text>
                             ))}
@@ -519,35 +530,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
-  },
   gridRow: {
     flexDirection: 'row',
     marginHorizontal: -6,
     marginBottom: 12,
   },
   productCard: {
-    width: '50%',
-    padding: 6,
-  },
-  productCardFlex: {
     flex: 1,
     padding: 6,
   },
   productGradient: {
+    height: 290,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    minHeight: 220,
-  },
-  productGradientFlex: {
-    flex: 1,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
+    overflow: 'hidden',
   },
   badge: {
     position: 'absolute',
@@ -612,13 +609,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   featureList: {
-    width: '100%',
-    marginBottom: 10,
-    minHeight: 54,
-    justifyContent: 'flex-start',
-  },
-  featureListFlex: {
-    flex: 1,
     width: '100%',
     marginBottom: 10,
     justifyContent: 'flex-start',

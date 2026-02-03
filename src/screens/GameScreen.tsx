@@ -15,7 +15,8 @@ import {GameBoard} from '@/components/GameBoard';
 import {WordInput} from '@/components/WordInput';
 import {ScoreDisplay} from '@/components/ScoreDisplay';
 import {ParticleEffect} from '@/components/ParticleEffect';
-import {GAME_CONFIG, ANIMATIONS, POWER_UPS} from '@/config/constants';
+import {GAME_CONFIG, ANIMATIONS, POWER_UPS, AUDIO_CONFIG} from '@/config/constants';
+import {AudioService} from '@/services/audio';
 import {Letter, GameState, Level, Word, UserProfile} from '@/types/game';
 import {
   validateWord,
@@ -193,7 +194,10 @@ export const GameScreen: React.FC<Props> = ({
             {...letter, isSelected: true},
           ])
         ) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          if (AudioService.isHapticsEnabled()) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          }
+          AudioService.playSFX(AUDIO_CONFIG.SOUNDS.WORD_INVALID);
           return prev;
         }
 
@@ -236,14 +240,20 @@ export const GameScreen: React.FC<Props> = ({
       );
 
       if (alreadyFound) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        if (AudioService.isHapticsEnabled()) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        }
+        AudioService.playSFX(AUDIO_CONFIG.SOUNDS.WORD_DUPLICATE);
         Alert.alert('Already Found', 'You already found this word!');
         handleClearSelection();
         return;
       }
 
       // Success!
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (AudioService.isHapticsEnabled()) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      AudioService.playSFX(AUDIO_CONFIG.SOUNDS.WORD_VALID);
 
       // Add particles
       const centerX = 200;
@@ -279,7 +289,10 @@ export const GameScreen: React.FC<Props> = ({
       setIsValidWord(undefined);
     } else {
       // Invalid word
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (AudioService.isHapticsEnabled()) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+      AudioService.playSFX(AUDIO_CONFIG.SOUNDS.WORD_INVALID);
       setIsValidWord(false);
 
       setTimeout(() => {
@@ -349,7 +362,10 @@ export const GameScreen: React.FC<Props> = ({
 
   const handleLevelComplete = () => {
     const stars = calculateStars(gameState.score, level.targetScore);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (AudioService.isHapticsEnabled()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    AudioService.playSFX(AUDIO_CONFIG.SOUNDS.LEVEL_COMPLETE);
 
     setTimeout(() => {
       Alert.alert(

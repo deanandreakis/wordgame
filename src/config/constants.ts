@@ -180,6 +180,24 @@ export const IAP_PRICING = {
   [IAP_PRODUCTS.PREMIUM_UNLOCK]: '$9.99',
 };
 
+export const AUDIO_CONFIG = {
+  MUSIC_VOLUME: 0.3,
+  SFX_VOLUME: 0.7,
+  MUSIC_FADE_IN: 1000,
+  MUSIC_FADE_OUT: 500,
+  SOUNDS: {
+    TILE_TAP: 'tile_tap',
+    WORD_VALID: 'word_valid',
+    WORD_INVALID: 'word_invalid',
+    WORD_DUPLICATE: 'word_duplicate',
+    LEVEL_COMPLETE: 'level_complete',
+    BUTTON_TAP: 'button_tap',
+  } as const,
+  MUSIC: {
+    FOREST_AMBIENT: 'forest_ambient',
+  } as const,
+};
+
 export const ANIMATIONS = {
   TILE_SELECT_DURATION: 150,
   TILE_DESELECT_DURATION: 100,

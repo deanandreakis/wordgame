@@ -7,9 +7,10 @@ import {
   Dimensions,
 } from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
-import {GAME_CONFIG, ANIMATIONS} from '@/config/constants';
+import {GAME_CONFIG, ANIMATIONS, AUDIO_CONFIG} from '@/config/constants';
 import {Letter} from '@/types/game';
 import * as Haptics from 'expo-haptics';
+import {AudioService} from '@/services/audio';
 
 interface Props {
   letter: Letter;
@@ -78,7 +79,10 @@ export const LetterTile: React.FC<Props> = ({letter, onPress, disabled}) => {
 
   const handlePress = () => {
     if (!disabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);  // More satisfying feedback
+      if (AudioService.isHapticsEnabled()) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      AudioService.playSFX(AUDIO_CONFIG.SOUNDS.TILE_TAP);
 
       // Enhanced bounce animation - deeper press, bouncier release
       Animated.sequence([

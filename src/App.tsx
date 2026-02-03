@@ -31,6 +31,8 @@ import {
   getPurchasedLevels,
 } from './utils/storage';
 import {IAP_PRODUCTS, COIN_REWARDS, GAME_CONFIG} from './config/constants';
+import {AudioService} from './services/audio';
+import {SettingsScreen} from './screens/SettingsScreen';
 import type {CustomerInfo} from 'react-native-purchases';
 // Import log capture to initialize it early
 import './utils/logCapture';
@@ -42,7 +44,8 @@ type Screen =
   | 'leaderboard'
   | 'shop'
   | 'help'
-  | 'logs';
+  | 'logs'
+  | 'settings';
 
 // Note: We use the native module directly instead of GameCenterService
 // because the service's authentication is broken (hangs forever)
@@ -67,6 +70,7 @@ const App: React.FC = () => {
     return () => {
       clearTimeout(timeout);
       IAPService.cleanup();
+      AudioService.cleanup();
     };
   }, []);
 
@@ -271,6 +275,14 @@ const App: React.FC = () => {
       } catch (error) {
         console.error('Failed to sync purchases:', error);
         // Continue anyway - user can manually restore purchases
+      }
+
+      // Initialize audio service and start background music
+      try {
+        await AudioService.initialize();
+        await AudioService.startMusic();
+      } catch (error) {
+        console.warn('[App] Audio initialization error:', error);
       }
 
       setIsInitialized(true);
@@ -534,6 +546,10 @@ const App: React.FC = () => {
     setCurrentScreen('logs');
   };
 
+  const handleSettingsPress = () => {
+    setCurrentScreen('settings');
+  };
+
   const handleBackToMenu = () => {
     setCurrentScreen('menu');
   };
@@ -567,6 +583,7 @@ const App: React.FC = () => {
           onShopPress={handleShopPress}
           onHelpPress={handleHelpPress}
           onLogsPress={handleLogsPress}
+          onSettingsPress={handleSettingsPress}
         />
       )}
       {currentScreen === 'levelSelect' && (
@@ -633,6 +650,9 @@ const App: React.FC = () => {
         </View>
       )}
       {currentScreen === 'help' && <HelpScreen onBack={handleBackToMenu} />}
+      {currentScreen === 'settings' && (
+        <SettingsScreen onBack={handleBackToMenu} />
+      )}
       {currentScreen === 'logs' && <LogScreen onBack={handleBackToMenu} />}
     </>
   );

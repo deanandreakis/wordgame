@@ -8,9 +8,10 @@ import {
   Animated,
 } from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
-import {GAME_CONFIG} from '@/config/constants';
+import {GAME_CONFIG, AUDIO_CONFIG} from '@/config/constants';
 import {getUserProfile} from '@/utils/storage';
 import {UserProfile} from '@/types/game';
+import {AudioService} from '@/services/audio';
 
 interface Props {
   onPlayPress: () => void;
@@ -18,6 +19,7 @@ interface Props {
   onShopPress: () => void;
   onHelpPress: () => void;
   onLogsPress?: () => void;
+  onSettingsPress?: () => void;
 }
 
 export const MenuScreen: React.FC<Props> = ({
@@ -26,6 +28,7 @@ export const MenuScreen: React.FC<Props> = ({
   onShopPress,
   onHelpPress,
   onLogsPress,
+  onSettingsPress,
 }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const titleScale = React.useRef(new Animated.Value(0)).current;
@@ -125,7 +128,7 @@ export const MenuScreen: React.FC<Props> = ({
                   },
                 ],
               }}>
-              <TouchableOpacity onPress={onPlayPress} activeOpacity={0.85}>
+              <TouchableOpacity onPress={() => { AudioService.playSFX(AUDIO_CONFIG.SOUNDS.BUTTON_TAP); onPlayPress(); }} activeOpacity={0.85}>
                 <LinearGradient
                   colors={[
                     GAME_CONFIG.COLORS.gradient1,
@@ -156,7 +159,7 @@ export const MenuScreen: React.FC<Props> = ({
                 },
               ]}>
               <TouchableOpacity
-                onPress={onLeaderboardPress}
+                onPress={() => { AudioService.playSFX(AUDIO_CONFIG.SOUNDS.BUTTON_TAP); onLeaderboardPress(); }}
                 activeOpacity={0.8}
                 style={styles.secondaryButtonWrapper}>
                 <LinearGradient
@@ -168,7 +171,7 @@ export const MenuScreen: React.FC<Props> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={onShopPress}
+                onPress={() => { AudioService.playSFX(AUDIO_CONFIG.SOUNDS.BUTTON_TAP); onShopPress(); }}
                 activeOpacity={0.8}
                 style={styles.secondaryButtonWrapper}>
                 <LinearGradient
@@ -180,7 +183,7 @@ export const MenuScreen: React.FC<Props> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={onHelpPress}
+                onPress={() => { AudioService.playSFX(AUDIO_CONFIG.SOUNDS.BUTTON_TAP); onHelpPress(); }}
                 activeOpacity={0.8}
                 style={styles.secondaryButtonWrapper}>
                 <LinearGradient
@@ -190,6 +193,20 @@ export const MenuScreen: React.FC<Props> = ({
                   <Text style={styles.secondaryButtonLabel}>Help</Text>
                 </LinearGradient>
               </TouchableOpacity>
+
+              {onSettingsPress && (
+                <TouchableOpacity
+                  onPress={() => { AudioService.playSFX(AUDIO_CONFIG.SOUNDS.BUTTON_TAP); onSettingsPress(); }}
+                  activeOpacity={0.8}
+                  style={styles.secondaryButtonWrapper}>
+                  <LinearGradient
+                    colors={[GAME_CONFIG.COLORS.cardBg, GAME_CONFIG.COLORS.tile]}
+                    style={styles.secondaryButton}>
+                    <Text style={styles.secondaryButtonText}>⚙️</Text>
+                    <Text style={styles.secondaryButtonLabel}>Settings</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
             </Animated.View>
 
             {/* Debug button - toggle SHOW_DEBUG_LOGS in constants.ts for production */}
@@ -223,7 +240,7 @@ export const MenuScreen: React.FC<Props> = ({
             )}
           </View>
 
-          <Text style={styles.version}>v1.0.0</Text>
+          <Text style={styles.version}>v1.1.0</Text>
         </View>
       </SafeAreaView>
     </LinearGradient>

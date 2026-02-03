@@ -6,7 +6,7 @@ module.exports = {
   expo: {
     name: 'LetterLoom',
     slug: 'letterloom',
-    version: '1.0.0',
+    version: '1.1.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'dark',
@@ -19,7 +19,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.letterloom.app',
-      buildNumber: '1',
+      buildNumber: '2',
       infoPlist: {
         UIBackgroundModes: [],
       },

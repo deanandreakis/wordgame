@@ -61,6 +61,36 @@ export async function savePurchasedLevels(levelIds: number[]): Promise<void> {
   }
 }
 
+export interface AppSettings {
+  musicEnabled: boolean;
+  sfxEnabled: boolean;
+  hapticsEnabled: boolean;
+}
+
+const DEFAULT_SETTINGS: AppSettings = {
+  musicEnabled: true,
+  sfxEnabled: true,
+  hapticsEnabled: true,
+};
+
+export async function getSettings(): Promise<AppSettings> {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.SETTINGS);
+    return data ? {...DEFAULT_SETTINGS, ...JSON.parse(data)} : DEFAULT_SETTINGS;
+  } catch (error) {
+    console.error('Error getting settings:', error);
+    return DEFAULT_SETTINGS;
+  }
+}
+
+export async function saveSettings(settings: AppSettings): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.SETTINGS, JSON.stringify(settings));
+  } catch (error) {
+    console.error('Error saving settings:', error);
+  }
+}
+
 export async function getPurchasedLevels(): Promise<number[]> {
   try {
     const data = await AsyncStorage.getItem(KEYS.PURCHASED_LEVELS);

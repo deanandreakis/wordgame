@@ -1,6 +1,6 @@
 {
   "name": "letterloom",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "LetterLoom - An addictive word puzzle game",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -24,6 +24,7 @@
     "@types/react": "~19.1.10",
     "eslint-config-expo": "~10.0.0",
     "expo": "^54.0.29",
+    "expo-av": "~16.0.8",
     "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.12",
     "expo-dev-client": "~6.0.20",
