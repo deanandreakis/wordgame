@@ -332,23 +332,23 @@ const styles = StyleSheet.create({
   },
   secondaryButtons: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 10,
   },
   secondaryButtonWrapper: {
     flex: 1,
   },
   secondaryButton: {
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
     borderRadius: 16,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    fontSize: 32,
+    fontSize: 28,
     marginBottom: 4,
   },
   secondaryButtonLabel: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
     color: GAME_CONFIG.COLORS.text,
   },
